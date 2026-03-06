@@ -88,6 +88,7 @@ export default function App() {
 
   const [session, setSession] = useState(null);
 const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
 const [crewId, setCrewId] = useState(null);
 
 useEffect(() => {
@@ -507,19 +508,51 @@ async function stopTimer() {
               onChange={(e) => setEmail(e.target.value)}
             />
 
+            <input
+  style={input}
+  type="password"
+  placeholder="Password"
+  value={password}
+  onChange={(e) => setPassword(e.target.value)}
+/>
+
             <div style={{ height: 10 }} />
 
             <button
-              style={btnPrimary}
-              onClick={async () => {
-                if (!email.trim()) return alert("Enter an email first.");
-                const { error } = await supabase.auth.signInWithOtp({ email: email.trim() });
-                if (error) return alert(error.message);
-                alert("Check your email for the login link!");
-              }}
-            >
-              Send Magic Link
-            </button>
+  style={btnPrimary}
+  onClick={async () => {
+    if (!email.trim() || !password) return alert("Enter email + password.");
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    if (error) return alert(error.message);
+  }}
+>
+  Sign In
+</button>
+
+<div style={{ height: 10 }} />
+
+<button
+  style={btn}
+  onClick={async () => {
+    if (!email.trim() || !password) return alert("Enter email + password.");
+
+    const { error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+    });
+
+    if (error) return alert(error.message);
+
+    alert("Account created. You can now sign in.");
+  }}
+>
+  Create Account
+</button>
           </div>
         </div>
       </div>
