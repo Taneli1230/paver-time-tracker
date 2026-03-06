@@ -82,6 +82,7 @@ export default function App() {
   const [view, setView] = useState({ screen: "jobs", jobId: null });
   const [dashboardRows, setDashboardRows] = useState([]);
   const [jobProgressRows, setJobProgressRows] = useState([]);
+  const [jobActivityRows, setJobActivityRows] = useState([]);
   const [newJob, setNewJob] = useState({ name: "", sqft: "" });
   const [manualEntry, setManualEntry] = useState({ activity: DEFAULT_ACTIVITIES[0], minutes: "" });
   const tickRef = useRef(0);
@@ -269,12 +270,12 @@ async function openJob(jobId) {
 
 async function openDashboard() {
   if (!crewId) {
-  alert("Your account is not assigned to a crew yet.");
-  return;
-}
+    alert("Your account is not assigned to a crew yet.");
+    return;
+  }
+
   setView({ screen: "dashboard", jobId: null });
 
-  // A) live timers (who is running what)
   const { data: timers, error: tErr } = await supabase
     .from("active_timer_dashboard")
     .select("*")
@@ -288,11 +289,10 @@ async function openDashboard() {
   }
   setDashboardRows(timers ?? []);
 
-  // B) job progress (totals per job)
   const { data: progress, error: pErr } = await supabase
     .from("job_progress_dashboard")
     .select("*")
-    .eq("crew_id", crewId) // if your view includes crew_id; see note below
+    .eq("crew_id", crewId)
     .order("name", { ascending: true });
 
   if (pErr) {
@@ -301,6 +301,18 @@ async function openDashboard() {
     return;
   }
   setJobProgressRows(progress ?? []);
+
+    const { data: activityRows, error: aErr } = await supabase
+    .from("job_activity_breakdown")
+    .select("*");
+
+  if (aErr) {
+    console.error("job activity breakdown load error", aErr);
+    alert(aErr.message);
+    return;
+  }
+
+  setJobActivityRows(activityRows ?? []);
 }
 
 async function addJob() {
@@ -516,7 +528,7 @@ async function stopTimer() {
           <div style={{ ...card, textAlign: "center" }}>
             <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 6 }}>Login to Time Tracker</div>
             <div style={{ color: "#6b7280", marginBottom: 14 }}>
-              Enter your email and we’ll send you a magic link.
+              Enter your email and password to sign in.
             </div>
 
             <input
@@ -670,37 +682,73 @@ async function stopTimer() {
         <div style={{ color: "#6b7280" }}>No jobs in progress yet.</div>
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
-          {jobProgressRows.map((j) => (
-            <div
-              key={j.job_id}
-              style={{
-                padding: 12,
-                borderRadius: 14,
-                border: "1px solid #e5e7eb",
-                background: "white",
-                display: "grid",
-                gridTemplateColumns: "1fr auto",
-                gap: 10,
-                alignItems: "center",
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 900, color: "#111827" }}>{j.name}</div>
-                <div style={{ color: "#6b7280", fontSize: 13 }}>
-                  {j.sqft} sqft
-                </div>
-              </div>
+          {jobProgressRows.map((j) => {
+            const activityBreakdown = jobActivityRows.filter((a) => a.job_id === j.job_id);
 
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontWeight: 900, color: "#111827" }}>
-                  {Number(j.total_hours || 0).toFixed(2)} hrs
+            return (
+              <div
+                key={j.job_id}
+                style={{
+                  padding: 12,
+                  borderRadius: 14,
+                  border: "1px solid #e5e7eb",
+                  background: "white",
+                  display: "grid",
+                  gap: 10,
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr auto",
+                    gap: 10,
+                    alignItems: "center",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 900, color: "#111827" }}>{j.name}</div>
+                    <div style={{ color: "#6b7280", fontSize: 13 }}>
+                      {j.sqft} sqft
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 900, color: "#111827" }}>
+                      {Number(j.total_hours || 0).toFixed(2)} hrs
+                    </div>
+                    <div style={{ color: "#6b7280", fontSize: 13 }}>
+                      {Number(j.min_per_sqft || 0).toFixed(2)} min/sqft
+                    </div>
+                  </div>
                 </div>
-                <div style={{ color: "#6b7280", fontSize: 13 }}>
-                  {Number(j.min_per_sqft || 0).toFixed(2)} min/sqft
-                </div>
+
+                {activityBreakdown.length > 0 && (
+                  <div style={{ display: "grid", gap: 4 }}>
+                    <div style={{ fontWeight: 800, color: "#111827", fontSize: 13 }}>
+                      Breakdown
+                    </div>
+
+                    {activityBreakdown.map((a) => (
+                      <div
+                        key={`${a.job_id}-${a.activity}`}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto",
+                          gap: 10,
+                          fontSize: 13,
+                        }}
+                      >
+                        <div style={{ color: "#6b7280" }}>{a.activity}</div>
+                        <div style={{ color: "#111827", fontWeight: 700 }}>
+                          {Number(a.total_hours || 0).toFixed(2)} hrs
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -755,56 +803,20 @@ async function stopTimer() {
   </div>
 )}
 
-        {view.screen === "job" && currentJob && (
-          <div style={{ display: "grid", gap: 14 }}>
-            <div style={card}>
-  <div style={{ fontWeight: 900, marginBottom: 10 }}>Job Progress</div>
+{view.screen === "job" && currentJob && (
+  <div style={{ display: "grid", gap: 14 }}>
+    <button style={btn} onClick={goJobs}>← Back</button>
 
-  {jobProgressRows.length === 0 ? (
-    <div style={{ color: "#6b7280" }}>No jobs in progress yet.</div>
-  ) : (
-    <div style={{ display: "grid", gap: 10 }}>
-      {jobProgressRows.map((j) => (
-        <div
-          key={j.job_id}
-          style={{
-            padding: 12,
-            borderRadius: 14,
-            border: "1px solid #e5e7eb",
-            background: "white",
-            display: "grid",
-            gridTemplateColumns: "1fr auto",
-            gap: 10,
-            alignItems: "center",
-          }}
-        >
-          <div>
-            <div style={{ fontWeight: 900, color: "#111827" }}>{j.name}</div>
-            <div style={{ color: "#6b7280", fontSize: 13 }}>
-              {j.sqft} sqft
-            </div>
-          </div>
-
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontWeight: 900, color: "#111827" }}>
-              {Number(j.total_hours || 0).toFixed(2)} hrs
-            </div>
-            <div style={{ color: "#6b7280", fontSize: 13 }}>
-              {Number(j.min_per_sqft || 0).toFixed(2)} min/sqft
-            </div>
-          </div>
-        </div>
-      ))}
+    <div style={card}>
+      <div style={{ fontWeight: 900, fontSize: 18 }}>{currentJob.name}</div>
+      <div style={{ color: "#6b7280", fontSize: 13 }}>Sqft</div>
+      <input
+        style={input}
+        inputMode="decimal"
+        value={currentJob.sqft}
+        onChange={(e) => updateJob(currentJob.id, { sqft: Number(e.target.value) || 0 })}
+      />
     </div>
-  )}
-</div>
-            <button style={btn} onClick={goJobs}>← Back</button>
-
-            <div style={card}>
-              <div style={{ fontWeight: 900, fontSize: 18 }}>{currentJob.name}</div>
-              <div style={{ color: "#6b7280", fontSize: 13 }}>Sqft</div>
-              <input style={input} inputMode="decimal" value={currentJob.sqft} onChange={(e) => updateJob(currentJob.id, { sqft: Number(e.target.value) || 0 })} />
-            </div>
 
             <div style={card}>
               <div style={{ fontWeight: 900, marginBottom: 10 }}>Start/Stop Timer (by Activity)</div>
