@@ -106,7 +106,13 @@ useEffect(() => {
       return;
     }
     console.log("Crew lookup result:", data);
-    setCrewId(data.crew_id);
+
+if (!data) {
+  console.warn("User is not assigned to a crew.");
+  return;
+}
+
+setCrewId(data.crew_id);
   })();
 }, [session]);
 useEffect(() => {
@@ -484,8 +490,21 @@ async function stopTimer() {
     URL.revokeObjectURL(url);
   }
 
-  const page = { maxWidth: 980, margin: "0 auto", padding: 16, fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif" };
-  const card = { border: "1px solid #e5e7eb", borderRadius: 14, padding: 14, background: "white", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" };
+  const page = {
+  maxWidth: 980,
+  margin: "0 auto",
+  padding: 16,
+  fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+  color: "#111827",
+};
+  const card = {
+  border: "1px solid #e5e7eb",
+  borderRadius: 14,
+  padding: 14,
+  background: "white",
+  color: "#111827",
+  boxShadow: "0 1px 2px rgba(0,0,0,0.04)"
+};
   const btn = { padding: "10px 12px", borderRadius: 12, border: "1px solid #d1d5db", background: "white", cursor: "pointer", fontWeight: 600 };
   const btnPrimary = { ...btn, border: "1px solid #111827", background: "#111827", color: "white" };
   const input = { width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #d1d5db", fontSize: 16 };
@@ -635,7 +654,7 @@ async function stopTimer() {
             </div>
 
             <div style={{ color: "#6b7280", fontSize: 12 }}>
-              Data is saved locally in your browser. For multi-device sync, we can add login + cloud later.
+             
             </div>
           </div>
         )}
