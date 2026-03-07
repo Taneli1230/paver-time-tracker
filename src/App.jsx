@@ -83,6 +83,7 @@ export default function App() {
   const [dashboardRows, setDashboardRows] = useState([]);
   const [jobProgressRows, setJobProgressRows] = useState([]);
   const [jobActivityRows, setJobActivityRows] = useState([]);
+  const [completedJobs, setCompletedJobs] = useState([]);
   const [newJob, setNewJob] = useState({ name: "", sqft: "" });
   const [manualEntry, setManualEntry] = useState({ activity: DEFAULT_ACTIVITIES[0], minutes: "" });
   const tickRef = useRef(0);
@@ -313,6 +314,30 @@ async function openDashboard() {
   }
 
   setJobActivityRows(activityRows ?? []);
+}
+
+async function openCompletedJobs() {
+  if (!crewId) {
+    alert("Your account is not assigned to a crew yet.");
+    return;
+  }
+
+  setView({ screen: "completed", jobId: null });
+
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("crew_id", crewId)
+    .not("completed_at", "is", null)
+    .order("completed_at", { ascending: false });
+
+  if (error) {
+    console.error("completed jobs load error", error);
+    alert(error.message);
+    return;
+  }
+
+  setCompletedJobs(data ?? []);
 }
 
 async function addJob() {
@@ -599,6 +624,7 @@ async function stopTimer() {
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <button style={btn} onClick={openDashboard}>Dashboard</button>
+            <button style={btn} onClick={openCompletedJobs}>Completed Jobs</button>
             <button style={btn} onClick={exportCSV}>Export CSV</button>
             <button
   style={btn}
@@ -803,9 +829,78 @@ async function stopTimer() {
   </div>
 )}
 
+{view.screen === "completed" && (
+  <div style={{ display: "grid", gap: 14 }}>
+    <button style={btn} onClick={goJobs}>← Back to Jobs</button>
+
+    <div style={card}>
+      <div style={{ fontWeight: 900, marginBottom: 10 }}>Completed Jobs</div>
+
+      {completedJobs.length === 0 ? (
+        <div style={{ color: "#6b7280" }}>No completed jobs yet.</div>
+      ) : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {completedJobs.map((j) => {
+            const totalM = Number(j.total_minutes) || 0;
+            const totalH = totalM / 60;
+            const mpsf = j.sqft > 0 ? totalM / j.sqft : 0;
+
+            return (
+              <div
+                key={j.id}
+                style={{
+                  padding: 12,
+                  borderRadius: 14,
+                  border: "1px solid #e5e7eb",
+                  background: "white",
+                  display: "grid",
+                  gridTemplateColumns: "1fr auto",
+                  gap: 10,
+                  alignItems: "center",
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 900, color: "#111827" }}>{j.name}</div>
+                  <div style={{ color: "#6b7280", fontSize: 13 }}>
+                    {j.sqft} sqft • {totalH.toFixed(2)} hrs • {mpsf.toFixed(2)} min/sqft
+                  </div>
+                  <div style={{ color: "#6b7280", fontSize: 12 }}>
+                    Completed {new Date(j.completed_at).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
 {view.screen === "job" && currentJob && (
   <div style={{ display: "grid", gap: 14 }}>
     <button style={btn} onClick={goJobs}>← Back</button>
+
+    <button
+      style={btn}
+      onClick={async () => {
+        const { error } = await supabase
+          .from("jobs")
+          .update({ completed_at: new Date().toISOString() })
+          .eq("id", currentJob.id);
+
+        if (error) {
+          console.error(error);
+          alert(error.message);
+          return;
+        }
+
+        alert("Job marked complete.");
+        goJobs();
+      }}
+    >
+      Complete Job
+    </button>
 
     <div style={card}>
       <div style={{ fontWeight: 900, fontSize: 18 }}>{currentJob.name}</div>
@@ -818,71 +913,101 @@ async function stopTimer() {
       />
     </div>
 
-            <div style={card}>
-              <div style={{ fontWeight: 900, marginBottom: 10 }}>Start/Stop Timer (by Activity)</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
-                {state.activities.map((act) => {
-                  const runningThis = activeTimer && activeTimer.jobId === currentJob.id && activeTimer.activity === act;
-                  const disabled = !!activeTimer && !runningThis;
-                  return (
-                    <button
-                      key={act}
-                      style={{ ...btn, padding: "14px 12px", borderRadius: 16, border: runningThis ? "2px solid #111827" : "1px solid #d1d5db", opacity: disabled ? 0.5 : 1 }}
-                      disabled={disabled}
-                      onClick={() => (runningThis ? stopTimer() : startTimer(currentJob.id, act))}
-                      title={disabled ? "Stop current timer first" : "Start timer"}
-                    >
-                      <div style={{ fontWeight: 900, fontSize: 14, lineHeight: 1.2 }}>{act}</div>
-                      {runningThis && <div style={{ marginTop: 6, fontWeight: 900 }}>{fmtClock(runningElapsedMs)} running</div>}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+    <div style={card}>
+      <div style={{ fontWeight: 900, marginBottom: 10 }}>Start/Stop Timer (by Activity)</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+        {state.activities.map((act) => {
+          const runningThis =
+            activeTimer &&
+            activeTimer.jobId === currentJob.id &&
+            activeTimer.activity === act;
 
-            <div style={card}>
-              <div style={{ fontWeight: 900, marginBottom: 10 }}>Manual Add</div>
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 120px", gap: 10 }}>
-                <select style={input} value={manualEntry.activity} onChange={(e) => setManualEntry((m) => ({ ...m, activity: e.target.value }))}>
-                  {state.activities.map((a) => <option key={a} value={a}>{a}</option>)}
-                </select>
-                <input style={input} placeholder="Minutes" inputMode="decimal" value={manualEntry.minutes} onChange={(e) => setManualEntry((m) => ({ ...m, minutes: e.target.value }))} />
-                <button style={btnPrimary} onClick={() => addManual(currentJob.id)}>Add</button>
-              </div>
-            </div>
- <div style={card}>
-              <div style={{ fontWeight: 900, marginBottom: 8 }}>Entries</div>
+          const disabled = !!activeTimer && !runningThis;
 
-              {currentJob.entries.length === 0 ? (
-                <div style={{ color: "#6b7280" }}>No entries yet.</div>
-              ) : (
-                <div style={{ display: "grid", gap: 6 }}>
-                  {currentJob.entries
-                    .slice()
-                    .reverse()
-                    .map((e) => (
-                      <div
-                        key={e.id}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          padding: 10,
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 12,
-                          background: "white",
-                        }}
-                      >
-                        <div style={{ fontWeight: 800 }}>{e.activity}</div>
-                        <div style={{ fontWeight: 900 }}>
-  {(Number(e.minutes) || 0).toFixed(2)} min
-</div>
-                      </div>
-                    ))}
+          return (
+            <button
+              key={act}
+              style={{
+                ...btn,
+                padding: "14px 12px",
+                borderRadius: 16,
+                border: runningThis ? "2px solid #111827" : "1px solid #d1d5db",
+                opacity: disabled ? 0.5 : 1,
+              }}
+              disabled={disabled}
+              onClick={() => (runningThis ? stopTimer() : startTimer(currentJob.id, act))}
+              title={disabled ? "Stop current timer first" : "Start timer"}
+            >
+              <div style={{ fontWeight: 900, fontSize: 14, lineHeight: 1.2 }}>{act}</div>
+              {runningThis && (
+                <div style={{ marginTop: 6, fontWeight: 900 }}>
+                  {fmtClock(runningElapsedMs)} running
                 </div>
               )}
-            </div>
-          </div>
-        )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+
+    <div style={card}>
+      <div style={{ fontWeight: 900, marginBottom: 10 }}>Manual Add</div>
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 120px", gap: 10 }}>
+        <select
+          style={input}
+          value={manualEntry.activity}
+          onChange={(e) => setManualEntry((m) => ({ ...m, activity: e.target.value }))}
+        >
+          {state.activities.map((a) => (
+            <option key={a} value={a}>{a}</option>
+          ))}
+        </select>
+
+        <input
+          style={input}
+          placeholder="Minutes"
+          inputMode="decimal"
+          value={manualEntry.minutes}
+          onChange={(e) => setManualEntry((m) => ({ ...m, minutes: e.target.value }))}
+        />
+
+        <button style={btnPrimary} onClick={() => addManual(currentJob.id)}>Add</button>
+      </div>
+    </div>
+
+    <div style={card}>
+      <div style={{ fontWeight: 900, marginBottom: 8 }}>Entries</div>
+
+      {currentJob.entries.length === 0 ? (
+        <div style={{ color: "#6b7280" }}>No entries yet.</div>
+      ) : (
+        <div style={{ display: "grid", gap: 6 }}>
+          {currentJob.entries
+            .slice()
+            .reverse()
+            .map((e) => (
+              <div
+                key={e.id}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: 10,
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 12,
+                  background: "white",
+                }}
+              >
+                <div style={{ fontWeight: 800 }}>{e.activity}</div>
+                <div style={{ fontWeight: 900 }}>
+                  {(Number(e.minutes) || 0).toFixed(2)} min
+                </div>
+              </div>
+            ))}
+        </div>
+      )}
+    </div>
+  </div>
+)}
       </div>
     </div>
   );
