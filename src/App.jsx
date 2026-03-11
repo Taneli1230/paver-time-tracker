@@ -3132,7 +3132,7 @@ async function openPayroll() {
                     activeTimer.activity === act;
 
                   const disabled = !!activeTimer && !runningThis;
-throw new Error('test crash')
+                  
                   return (
                     <button
                       key={act}
