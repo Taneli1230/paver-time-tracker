@@ -3306,12 +3306,12 @@ async function openPayroll() {
             <div style={card}>
               <div style={{ fontWeight: 900, marginBottom: 8 }}>Entries</div>
 
-              {currentJob.entries.length === 0 ? (
+              {(currentJob.entries || []).length === 0 ? (
                 <div style={{ color: "#6b7280" }}>No entries yet.</div>
               ) : (
                 <div style={{ display: "grid", gap: 6 }}>
-                  {currentJob.entries
-                    .slice()
+                  {(currentJob.entries || [])
+  .slice()
                     .reverse()
                     .map((e) => (
                       <div
