@@ -148,6 +148,9 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [crewId, setCrewId] = useState(null);
   const [role, setRole] = useState("laborer");
+  const [editingEntry, setEditingEntry] = useState(null);
+const [editMinutes, setEditMinutes] = useState("");
+const [editActivity, setEditActivity] = useState("");
 
   // Payroll clock state
   const [activeShift, setActiveShift] = useState(null);
@@ -1354,6 +1357,47 @@ async function openPayroll() {
       alert(error.message);
     }
   }
+  function startEditEntry(entry) {
+  setEditingEntry(entry)
+  setEditMinutes(entry.minutes || "")
+  setEditActivity(entry.activity || "")
+}
+
+async function saveEditEntry() {
+  if (!editingEntry) return
+
+  const { error } = await supabase
+    .from("entries")
+    .update({
+      minutes: Number(editMinutes),
+      activity: editActivity
+    })
+    .eq("id", editingEntry.id)
+
+  if (error) {
+    alert(error.message)
+    return
+  }
+
+  // refresh page data
+  window.location.reload()
+}
+
+async function deleteEntry(entry) {
+  if (!confirm("Delete this entry?")) return
+
+  const { error } = await supabase
+    .from("entries")
+    .delete()
+    .eq("id", entry.id)
+
+  if (error) {
+    alert(error.message)
+    return
+  }
+
+  window.location.reload()
+}
 
   async function addManual(jobId) {
     if (!session) return alert("Not logged in");
@@ -3304,36 +3348,115 @@ async function openPayroll() {
             </div>
 
             <div style={card}>
-              <div style={{ fontWeight: 900, marginBottom: 8 }}>Entries</div>
+  <div style={{ fontWeight: 900, marginBottom: 8 }}>
+    Entries
+  </div>
 
-              {(currentJob.entries || []).length === 0 ? (
-                <div style={{ color: "#6b7280" }}>No entries yet.</div>
-              ) : (
-                <div style={{ display: "grid", gap: 6 }}>
-                  {(currentJob.entries || [])
-  .slice()
-                    .reverse()
-                    .map((e) => (
-                      <div
-                        key={e.id}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          padding: 10,
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 12,
-                          background: "white",
-                        }}
-                      >
-                        <div style={{ fontWeight: 800 }}>{e.activity}</div>
-                        <div style={{ fontWeight: 900 }}>
-                          {(Number(e.minutes) || 0).toFixed(2)} min
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              )}
+  {(currentJob.entries || []).length === 0 ? (
+    <div style={{ color: "#6b7280" }}>
+      No entries yet.
+    </div>
+  ) : (
+    <div style={{ display: "grid", gap: 6 }}>
+      {(currentJob.entries || [])
+        .slice()
+        .reverse()
+        .map((e) => (
+          <div
+            key={e.id}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              padding: 10,
+              border: "1px solid #e5e7eb",
+              borderRadius: 12,
+              background: "white",
+              alignItems: "center"
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: 800 }}>
+                {e.activity}
+              </div>
+
+              <div>
+                {(Number(e.minutes) || 0).toFixed(2)} min
+              </div>
             </div>
+
+            {isManager && (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  style={btn}
+                  onClick={() => startEditEntry(e)}
+                >
+                  Edit
+                </button>
+
+                <button
+                  style={btn}
+                  onClick={() => deleteEntry(e)}
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+    </div>
+  )}
+</div>
+
+
+{editingEntry && (
+  <div style={card}>
+    <div style={{ fontWeight: 800, marginBottom: 10 }}>
+      Edit Entry
+    </div>
+
+    <div style={{ display: "grid", gap: 10 }}>
+
+      <select
+        style={input}
+        value={editActivity}
+        onChange={(e) => setEditActivity(e.target.value)}
+      >
+        {state.activities.map((a) => (
+          <option key={a} value={a}>
+            {a}
+          </option>
+        ))}
+      </select>
+
+      <input
+        style={input}
+        value={editMinutes}
+        onChange={(e) => setEditMinutes(e.target.value)}
+        placeholder="Minutes"
+      />
+
+      <div style={{ display: "flex", gap: 10 }}>
+
+        <button
+          style={btnPrimary}
+          onClick={saveEditEntry}
+        >
+          Save
+        </button>
+
+        <button
+          style={btn}
+          onClick={() => setEditingEntry(null)}
+        >
+          Cancel
+        </button>
+
+      </div>
+
+    </div>
+  </div>
+)}
+
           </div>
         )}
       </div>
