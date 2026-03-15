@@ -3,12 +3,6 @@ import { supabase } from "./supabaseClient";
 
 const STORAGE_KEY = "paver_time_tracker_v1";
 
-const DIVISIONS = {
-  PAVERS: "Pavers",
-  LANDSCAPE: "Landscape Install",
-  LAWN: "Lawn Care / Mowing",
-};
-
 const DEFAULT_ACTIVITIES = [
   "Travel",
   "Mobilize / Unload",
@@ -105,7 +99,6 @@ export default function App() {
   });
 
   const [view, setView] = useState({ screen: "jobs", jobId: null });
-  const [selectedDivision, setSelectedDivision] = useState(DIVISIONS.PAVERS);
   const [dashboardRows, setDashboardRows] = useState([]);
   const [jobProgressRows, setJobProgressRows] = useState([]);
   const [jobActivityRows, setJobActivityRows] = useState([]);
@@ -209,7 +202,6 @@ const [payrollShiftRows, setPayrollShiftRows] = useState([]);
         .from("jobs")
         .select("*")
         .eq("crew_id", crewId)
-        .eq("division", selectedDivision)
         .is("completed_at", null)
         .order("created_at", { ascending: false });
 
@@ -241,7 +233,7 @@ const [payrollShiftRows, setPayrollShiftRows] = useState([]);
         })),
       }));
     })();
-  }, [crewId, selectedDivision]);
+  }, [crewId]);
 
   useEffect(() => {
     if (!session || !crewId) return;
@@ -1330,7 +1322,6 @@ async function openPayroll(weekOffsetArg) {
       .insert([
         {
           crew_id: crewId,
-          division: selectedDivision,
           name,
           patio_sqft: patioSqft || 0,
           wall_sqft: wallSqft || 0,
@@ -1872,12 +1863,10 @@ async function deleteEntry(entry) {
         >
           <div>
             <div style={{ fontSize: 20, fontWeight: 800 }}>
-              {selectedDivision} Time Tracker
+              Paver Patio Time Tracker (MVP)
             </div>
             <div style={{ color: "#6b7280", fontSize: 13 }}>
-              {selectedDivision === DIVISIONS.PAVERS
-               ? "Track activities → get accurate hours per sqft"
-               : "This division is under construction."}
+              Track activities → get accurate hours per sqft
             </div>
           </div>
 
@@ -1949,29 +1938,6 @@ async function deleteEntry(entry) {
         <div style={{ height: 14 }} />
 
         <div style={card}>
-          <div style={{ fontWeight: 900, marginBottom: 10 }}>Division</div>
-
-          <select
-            style={input}
-            value={selectedDivision}
-            onChange={(e) => {
-              setSelectedDivision(e.target.value);
-              setView({ screen: "jobs", jobId: null });
-            }}
-          >
-            <option value={DIVISIONS.PAVERS}>Pavers</option>
-            <option value={DIVISIONS.LANDSCAPE}>Landscape Install</option>
-            <option value={DIVISIONS.LAWN}>Lawn Care / Mowing</option>
-          </select>
-
-          <div style={{ color: "#6b7280", fontSize: 13, marginTop: 8 }}>
-            Pavers is live. Other divisions are hidden behind under-construction mode for now.
-          </div>
-        </div>
-
-        <div style={{ height: 14 }} />
-
-        <div style={card}>
           <div style={{ fontWeight: 900, marginBottom: 10 }}>Payroll Clock</div>
 
           <div style={{ color: "#6b7280", marginBottom: 8 }}>
@@ -2024,138 +1990,123 @@ async function deleteEntry(entry) {
 
         <div style={{ height: 14 }} />
 
-       {selectedDivision !== DIVISIONS.PAVERS && (
-  <div style={card}>
-    <div style={{ fontWeight: 900, fontSize: 18, marginBottom: 10 }}>
-      {selectedDivision}
-    </div>
-
-    <div style={{ color: "#6b7280", marginBottom: 10 }}>
-      This division is currently under construction.
-    </div>
-
-    <div style={{ color: "#6b7280" }}>
-      The Pavers side remains fully live and unchanged while we build this section.
-    </div>
-  </div>
-)}
-
-{selectedDivision === DIVISIONS.PAVERS && view.screen === "jobs" && (
-  <div style={{ display: "grid", gap: 14 }}>
-    <div style={card}>
-      <div style={{ fontWeight: 800, marginBottom: 10 }}>New Job</div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "2fr 1fr 1fr 1fr 130px",
-          gap: 10,
-        }}
-      >
-        <input
-          style={input}
-          placeholder="Job name"
-          value={newJob.name}
-          onChange={(e) =>
-            setNewJob((j) => ({ ...j, name: e.target.value }))
-          }
-        />
-        <input
-          style={input}
-          placeholder="Patio Sqft"
-          inputMode="decimal"
-          value={newJob.patio_sqft}
-          onChange={(e) =>
-            setNewJob((j) => ({ ...j, patio_sqft: e.target.value }))
-          }
-        />
-        <input
-          style={input}
-          placeholder="Wall Sqft"
-          inputMode="decimal"
-          value={newJob.wall_sqft}
-          onChange={(e) =>
-            setNewJob((j) => ({ ...j, wall_sqft: e.target.value }))
-          }
-        />
-        <input
-          style={input}
-          placeholder="Cap LF"
-          inputMode="decimal"
-          value={newJob.cap_lf}
-          onChange={(e) =>
-            setNewJob((j) => ({ ...j, cap_lf: e.target.value }))
-          }
-        />
-        <button style={btnPrimary} onClick={addJob}>
-          Add
-        </button>
-      </div>
-    </div>
-
-    <div style={card}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          gap: 10,
-        }}
-      >
-        <div style={{ fontWeight: 800 }}>Jobs</div>
-        <div style={{ color: "#6b7280", fontSize: 13 }}>
-          {state.jobs.length} total
-        </div>
-      </div>
-
-      <div style={{ height: 10 }} />
-
-      {state.jobs.length === 0 ? (
-        <div style={{ color: "#6b7280" }}>
-          No jobs yet. Add your first job above.
-        </div>
-      ) : (
-        <div style={{ display: "grid", gap: 10 }}>
-          {state.jobs.map((j) => {
-            const totalM = Number(j.total_minutes) || 0;
-            const hrs = totalM / 60;
-
-            return (
+        {view.screen === "jobs" && (
+          <div style={{ display: "grid", gap: 14 }}>
+            <div style={card}>
+              <div style={{ fontWeight: 800, marginBottom: 10 }}>New Job</div>
               <div
-                key={j.id}
                 style={{
-                  padding: 12,
-                  borderRadius: 14,
-                  border: "1px solid #e5e7eb",
-                  background: "white",
                   display: "grid",
-                  gridTemplateColumns: "1fr auto",
+                  gridTemplateColumns: "2fr 1fr 1fr 1fr 130px",
                   gap: 10,
-                  alignItems: "center",
                 }}
               >
-                <div>
-                  <div style={{ fontWeight: 800 }}>{j.name}</div>
-                  <div style={{ color: "#6b7280", fontSize: 13 }}>
-                    Patio: {Number(j.patio_sqft || 0)} sqft • Wall:{" "}
-                    {Number(j.wall_sqft || 0)} sqft • Cap:{" "}
-                    {Number(j.cap_lf || 0)} lf
-                  </div>
-                  <div style={{ color: "#6b7280", fontSize: 13 }}>
-                    {hrs.toFixed(2)} hrs
-                  </div>
-                </div>
-
-                <button style={btnPrimary} onClick={() => openJob(j.id)}>
-                  Open
+                <input
+                  style={input}
+                  placeholder="Job name"
+                  value={newJob.name}
+                  onChange={(e) =>
+                    setNewJob((j) => ({ ...j, name: e.target.value }))
+                  }
+                />
+                <input
+                  style={input}
+                  placeholder="Patio Sqft"
+                  inputMode="decimal"
+                  value={newJob.patio_sqft}
+                  onChange={(e) =>
+                    setNewJob((j) => ({ ...j, patio_sqft: e.target.value }))
+                  }
+                />
+                <input
+                  style={input}
+                  placeholder="Wall Sqft"
+                  inputMode="decimal"
+                  value={newJob.wall_sqft}
+                  onChange={(e) =>
+                    setNewJob((j) => ({ ...j, wall_sqft: e.target.value }))
+                  }
+                />
+                <input
+                  style={input}
+                  placeholder="Cap LF"
+                  inputMode="decimal"
+                  value={newJob.cap_lf}
+                  onChange={(e) =>
+                    setNewJob((j) => ({ ...j, cap_lf: e.target.value }))
+                  }
+                />
+                <button style={btnPrimary} onClick={addJob}>
+                  Add
                 </button>
               </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  </div>
-)}
+            </div>
+
+            <div style={card}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "baseline",
+                  gap: 10,
+                }}
+              >
+                <div style={{ fontWeight: 800 }}>Jobs</div>
+                <div style={{ color: "#6b7280", fontSize: 13 }}>
+                  {state.jobs.length} total
+                </div>
+              </div>
+
+              <div style={{ height: 10 }} />
+
+              {state.jobs.length === 0 ? (
+                <div style={{ color: "#6b7280" }}>
+                  No jobs yet. Add your first job above.
+                </div>
+              ) : (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {state.jobs.map((j) => {
+                    const totalM = Number(j.total_minutes) || 0;
+                    const hrs = totalM / 60;
+
+                    return (
+                      <div
+                        key={j.id}
+                        style={{
+                          padding: 12,
+                          borderRadius: 14,
+                          border: "1px solid #e5e7eb",
+                          background: "white",
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto",
+                          gap: 10,
+                          alignItems: "center",
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 800 }}>{j.name}</div>
+                          <div style={{ color: "#6b7280", fontSize: 13 }}>
+                            Patio: {Number(j.patio_sqft || 0)} sqft • Wall:{" "}
+                            {Number(j.wall_sqft || 0)} sqft • Cap:{" "}
+                            {Number(j.cap_lf || 0)} lf
+                          </div>
+                          <div style={{ color: "#6b7280", fontSize: 13 }}>
+                            {hrs.toFixed(2)} hrs
+                          </div>
+                        </div>
+
+                        <button style={btnPrimary} onClick={() => openJob(j.id)}>
+                          Open
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {view.screen === "payroll" && isManager && (
           <div style={{ display: "grid", gap: 14 }}>
             <button style={btn} onClick={goJobs}>
