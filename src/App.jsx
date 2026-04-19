@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 import PaversJobsScreen from "./components/PaversJobsScreen";
+import LoginScreen from "./components/LoginScreen";
+import PayrollScreen from "./components/PayrollScreen";
+import BenchmarksScreen from "./components/BenchmarksScreen";
+import EstimatorScreen from "./components/EstimatorScreen";
+import CompletedJobsScreen from "./components/CompletedJobsScreen";
+import CompletedJobReportScreen from "./components/CompletedJobReportScreen";
+import DashboardScreen from "./components/DashboardScreen";
+import JobDetailScreen from "./components/JobDetailScreen";
 
 const STORAGE_KEY = "paver_time_tracker_v1";
 
@@ -153,8 +161,6 @@ export default function App() {
   const [tick, setTick] = useState(Date.now());
 
   const [session, setSession] = useState(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [crewId, setCrewId] = useState(null);
   const [role, setRole] = useState("laborer");
   const [payrollWeekOffset, setPayrollWeekOffset] = useState(0);
@@ -1777,89 +1783,17 @@ async function deleteEntry(entry) {
     fontSize: 16,
   };
 
-  if (!session) {
+if (!session) {
     return (
-      <div style={{ background: "#f8fafc", minHeight: "100vh" }}>
-        <div
-          style={{
-            maxWidth: 520,
-            margin: "0 auto",
-            padding: 24,
-            fontFamily: page.fontFamily,
-          }}
-        >
-          <div style={{ ...card, textAlign: "center" }}>
-            <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 6 }}>
-              Login to Time Tracker
-            </div>
-            <div style={{ color: "#6b7280", marginBottom: 14 }}>
-              Enter your email and password to sign in.
-            </div>
-
-            <input
-              style={input}
-              type="email"
-              placeholder="you@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-
-            <div style={{ height: 10 }} />
-
-            <input
-              style={input}
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-
-            <div style={{ height: 10 }} />
-
-            <button
-              style={btnPrimary}
-              onClick={async () => {
-                if (!email.trim() || !password) {
-                  return alert("Enter email + password.");
-                }
-
-                const { error } = await supabase.auth.signInWithPassword({
-                  email: email.trim(),
-                  password,
-                });
-
-                if (error) return alert(error.message);
-              }}
-            >
-              Sign In
-            </button>
-
-            <div style={{ height: 10 }} />
-
-            <button
-              style={btn}
-              onClick={async () => {
-                if (!email.trim() || !password) {
-                  return alert("Enter email + password.");
-                }
-
-                const { error } = await supabase.auth.signUp({
-                  email: email.trim(),
-                  password,
-                });
-
-                if (error) return alert(error.message);
-                alert("Account created. You can now sign in.");
-              }}
-            >
-              Create Account
-            </button>
-          </div>
-        </div>
-      </div>
+      <LoginScreen
+        card={card}
+        input={input}
+        btn={btn}
+        btnPrimary={btnPrimary}
+        fontFamily={page.fontFamily}
+      />
     );
   }
-
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh" }}>
       <div style={page}>
@@ -2053,1396 +1987,146 @@ async function deleteEntry(entry) {
     openJob={openJob}
   />
 )}
-        {view.screen === "payroll" && isManager && (
-          <div style={{ display: "grid", gap: 14 }}>
-            <button style={btn} onClick={goJobs}>
-              ← Back to Jobs
-            </button>
-
-            {payrollLoading ? (
-              <div style={card}>Loading payroll...</div>
-            ) : (
-              <>
-                <div style={card}>
-                  <div style={{ fontWeight: 900, marginBottom: 10 }}>
-                    Current Payroll Status
-                  </div>
-
-                  {payrollRows.length === 0 ? (
-                    <div style={{ color: "#6b7280" }}>
-                      No one is currently clocked in.
-                    </div>
-                  ) : (
-                    <div style={{ display: "grid", gap: 8 }}>
-                      {payrollRows.map((row) => (
-                        <div
-                          key={row.id}
-                          style={{
-                            padding: 10,
-                            border: "1px solid #e5e7eb",
-                            borderRadius: 12,
-                            background: "white",
-                            display: "grid",
-                            gridTemplateColumns: "1fr auto",
-                            gap: 10,
-                            alignItems: "center",
-                          }}
-                        >
-                          <div>
-                            <div style={{ fontWeight: 800 }}>
-  {String(row.display_name || "").trim() || `Worker ${shortUserId(row.user_id)}`}
-</div>
-                            <div style={{ color: "#6b7280", fontSize: 13 }}>
-                              {row.status === "on_break"
-                                ? "On Lunch"
-                                : "Clocked In"}
-                            </div>
-                          </div>
-
-                          <div style={{ textAlign: "right" }}>
-                            <div style={{ fontWeight: 800 }}>
-                              {new Date(row.clock_in_at).toLocaleTimeString()}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div style={card}>
-                 <div
-  style={{
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 10,
-    flexWrap: "wrap",
-  }}
->
-  <div>
-    <div style={{ fontWeight: 900 }}>Weekly Payroll Totals</div>
-    <div style={{ color: "#6b7280", fontSize: 13 }}>
-      {payrollWeekDates[0]} to {payrollWeekDates[6]}
-    </div>
-  </div>
-
-  <div style={{ display: "flex", gap: 8 }}>
-    <button
-      style={btn}
-      onClick={() => openPayroll(payrollWeekOffset + 1)}
-    >
-      ← Previous Week
-    </button>
-
-    <button
-      style={btn}
-      onClick={() => openPayroll(Math.max(0, payrollWeekOffset - 1))}
-      disabled={payrollWeekOffset === 0}
-    >
-      Next Week →
-    </button>
-  </div>
-</div>
-                  <div style={card}>
-  <div style={{ fontWeight: 900, marginBottom: 10 }}>
-    Payroll Shift Corrections
-  </div>
-
-  {payrollShiftRows.length === 0 ? (
-    <div style={{ color: "#6b7280" }}>No payroll shifts found this week.</div>
-  ) : (
-    <div style={{ display: "grid", gap: 8 }}>
-      {payrollShiftRows.map((row) => (
-        <div
-          key={row.id}
-          style={{
-            padding: 10,
-            border: "1px solid #e5e7eb",
-            borderRadius: 12,
-            background: "white",
-            display: "grid",
-            gridTemplateColumns: "1fr auto",
-            gap: 10,
-            alignItems: "center",
-          }}
-        >
-          <div>
-            <div style={{ fontWeight: 800 }}>
-              {row.display_name || `Worker ${shortUserId(row.user_id)}`}
-            </div>
-            <div style={{ color: "#6b7280", fontSize: 13 }}>
-              {row.work_date} • {row.status}
-            </div>
-            <div style={{ color: "#6b7280", fontSize: 13 }}>
-              In: {row.clock_in_at ? new Date(row.clock_in_at).toLocaleString() : "—"} •
-              Out: {row.clock_out_at ? new Date(row.clock_out_at).toLocaleString() : "—"}
-            </div>
-            <div style={{ color: "#6b7280", fontSize: 13 }}>
-              {(Number(row.total_work_minutes || 0) / 60).toFixed(2)} hrs
-            </div>
-          </div>
-
-          <button style={btn} onClick={() => editPayrollShift(row)}>
-            Edit
-          </button>
-        </div>
-      ))}
-    </div>
-  )}
-</div>
-
-                  {weeklyPayrollRows.length === 0 ? (
-                    <div style={{ color: "#6b7280" }}>
-                      No payroll shifts found this week.
-                    </div>
-                  ) : (
-                    <div style={{ display: "grid", gap: 8 }}>
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1.4fr repeat(7, 1fr) 1fr",
-                          gap: 8,
-                          fontWeight: 800,
-                          fontSize: 12,
-                          color: "#6b7280",
-                          paddingBottom: 6,
-                        }}
-                      >
-                        <div>Worker</div>
-                        {payrollWeekDates.map((d) => (
-                          <div key={d}>
-                            {new Date(`${d}T12:00:00`).toLocaleDateString([], {
-                              weekday: "short",
-                            })}
-                          </div>
-                        ))}
-                        <div>Total</div>
-                      </div>
-
-                      {weeklyPayrollRows.map((row) => (
-                        <div
-                          key={row.user_id}
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "1.4fr repeat(7, 1fr) 1fr",
-                            gap: 8,
-                            padding: 10,
-                            border: "1px solid #e5e7eb",
-                            borderRadius: 12,
-                            background: "white",
-                            alignItems: "center",
-                            fontSize: 13,
-                          }}
-                        >
-                          <div style={{ fontWeight: 800 }}>
-  {String(row.display_name || "").trim() || `Worker ${shortUserId(row.user_id)}`}
-</div>
-
-                          {payrollWeekDates.map((d) => (
-                            <div key={d}>
-                              {(Number(row.days[d] || 0) / 60).toFixed(2)}
-                            </div>
-                          ))}
-
-                          <div style={{ fontWeight: 900 }}>
-                            {(Number(row.total_minutes || 0) / 60).toFixed(2)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
+{view.screen === "payroll" && isManager && (
+          <PayrollScreen
+            card={card}
+            btn={btn}
+            input={input}
+            goJobs={goJobs}
+            payrollLoading={payrollLoading}
+            payrollRows={payrollRows}
+            weeklyPayrollRows={weeklyPayrollRows}
+            payrollWeekDates={payrollWeekDates}
+            payrollWeekOffset={payrollWeekOffset}
+            payrollShiftRows={payrollShiftRows}
+            openPayroll={openPayroll}
+            editPayrollShift={editPayrollShift}
+          />
         )}
 
-        {view.screen === "analysis" && isManager && (
-          <div style={{ display: "grid", gap: 14 }}>
-            <button style={btn} onClick={goJobs}>
-              ← Back to Jobs
-            </button>
-
-            <div
-              style={{
-                ...card,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ fontWeight: 900, fontSize: 18 }}>
-                Production Benchmarks
-              </div>
-
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontWeight: 600,
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={excludeDelayedBenchmarks}
-                  onChange={(e) => setExcludeDelayedBenchmarks(e.target.checked)}
-                />
-                Exclude delayed jobs from benchmarks
-              </label>
-            </div>
-
-            {analysisLoading ? (
-              <div style={card}>Loading analysis...</div>
-            ) : (
-              <>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                    gap: 12,
-                  }}
-                >
-                  <div style={card}>
-                    <div style={{ color: "#6b7280", fontSize: 13 }}>
-                      Completed Jobs
-                    </div>
-                    <div style={{ fontWeight: 900, fontSize: 24 }}>
-                      {analysisSummary.completedCount}
-                    </div>
-                  </div>
-                  <div style={card}>
-                    <div style={{ color: "#6b7280", fontSize: 13 }}>
-                      Clean Jobs
-                    </div>
-                    <div style={{ fontWeight: 900, fontSize: 24 }}>
-                      {analysisSummary.cleanCount}
-                    </div>
-                  </div>
-                  <div style={card}>
-                    <div style={{ color: "#6b7280", fontSize: 13 }}>
-                      Delayed Jobs
-                    </div>
-                    <div style={{ fontWeight: 900, fontSize: 24 }}>
-                      {analysisSummary.delayedCount}
-                    </div>
-                  </div>
-                  <div style={card}>
-                    <div style={{ color: "#6b7280", fontSize: 13 }}>
-                      Avg Hours (current filter)
-                    </div>
-                    <div style={{ fontWeight: 900, fontSize: 24 }}>
-                      {analysisSummary.avgHours.toFixed(2)}
-                    </div>
-                  </div>
-                  <div style={card}>
-                    <div style={{ color: "#6b7280", fontSize: 13 }}>
-                      Avg Clean Job Hours
-                    </div>
-                    <div style={{ fontWeight: 900, fontSize: 24 }}>
-                      {analysisSummary.avgCleanHours.toFixed(2)}
-                    </div>
-                  </div>
-                  <div style={card}>
-                    <div style={{ color: "#6b7280", fontSize: 13 }}>
-                      Avg Delayed Job Hours
-                    </div>
-                    <div style={{ fontWeight: 900, fontSize: 24 }}>
-                      {analysisSummary.avgDelayedHours.toFixed(2)}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={card}>
-                  <div style={{ fontWeight: 900, marginBottom: 10 }}>
-                    Activity Benchmarks
-                  </div>
-
-                  {benchmarkSummaryRows.length === 0 ? (
-                    <div style={{ color: "#6b7280" }}>
-                      No completed activity data yet.
-                    </div>
-                  ) : (
-                    <div style={{ display: "grid", gap: 8 }}>
-                      {benchmarkSummaryRows.map((row) => (
-                        <div
-                          key={row.activity}
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "2fr 1fr 1fr 1fr",
-                            gap: 10,
-                            padding: 10,
-                            border: "1px solid #e5e7eb",
-                            borderRadius: 12,
-                            background: "white",
-                            alignItems: "center",
-                          }}
-                        >
-                          <div style={{ fontWeight: 800 }}>{row.activity}</div>
-                          <div>
-                            <div style={{ color: "#6b7280", fontSize: 12 }}>
-                              Total Hrs
-                            </div>
-                            <div style={{ fontWeight: 800 }}>
-                              {row.total_hours.toFixed(2)}
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{ color: "#6b7280", fontSize: 12 }}>
-                              Avg Hrs/Job
-                            </div>
-                            <div style={{ fontWeight: 800 }}>
-                              {row.avg_hours_per_job.toFixed(2)}
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{ color: "#6b7280", fontSize: 12 }}>
-                              Avg Min/Sqft
-                            </div>
-                            <div style={{ fontWeight: 800 }}>
-                              {row.avg_min_per_sqft == null
-                                ? "—"
-                                : row.avg_min_per_sqft.toFixed(2)}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div style={card}>
-                  <div style={{ fontWeight: 900, marginBottom: 10 }}>
-                    Completed Job Analysis
-                  </div>
-
-                  {filteredAnalysisRows.length === 0 ? (
-                    <div style={{ color: "#6b7280" }}>
-                      No completed jobs found for this filter.
-                    </div>
-                  ) : (
-                    <div style={{ display: "grid", gap: 8 }}>
-                      {filteredAnalysisRows.map((row) => {
-                        const totalMeasure =
-                          Number(row.patio_sqft || 0) +
-                          Number(row.wall_sqft || 0);
-
-                        const minPerSqft =
-                          totalMeasure > 0
-                            ? Number(row.total_minutes || 0) / totalMeasure
-                            : 0;
-
-                        return (
-                          <div
-                            key={row.job_id}
-                            style={{
-                              padding: 10,
-                              border: "1px solid #e5e7eb",
-                              borderRadius: 12,
-                              background: "white",
-                              display: "grid",
-                              gridTemplateColumns: "1fr auto",
-                              gap: 10,
-                              alignItems: "center",
-                            }}
-                          >
-                            <div>
-                              <div style={{ fontWeight: 800 }}>{row.name}</div>
-                              <div style={{ color: "#6b7280", fontSize: 13 }}>
-                                Patio: {Number(row.patio_sqft || 0)} sqft •
-                                Wall: {Number(row.wall_sqft || 0)} sqft • Cap:{" "}
-                                {Number(row.cap_lf || 0)} lf
-                              </div>
-                              <div style={{ color: "#6b7280", fontSize: 13 }}>
-                                {row.has_delay ? "Delayed job" : "Clean job"} •{" "}
-                                {Number(row.note_count || 0)} notes
-                              </div>
-                            </div>
-
-                            <div style={{ textAlign: "right" }}>
-                              <div style={{ fontWeight: 900 }}>
-                                {Number(row.total_hours || 0).toFixed(2)} hrs
-                              </div>
-                              <div style={{ color: "#6b7280", fontSize: 13 }}>
-                                {minPerSqft > 0
-                                  ? `${minPerSqft.toFixed(2)} min/sqft`
-                                  : "—"}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
+{view.screen === "analysis" && isManager && (
+          <BenchmarksScreen
+            card={card}
+            btn={btn}
+            goJobs={goJobs}
+            analysisLoading={analysisLoading}
+            analysisSummary={analysisSummary}
+            filteredAnalysisRows={filteredAnalysisRows}
+            benchmarkSummaryRows={benchmarkSummaryRows}
+            excludeDelayedBenchmarks={excludeDelayedBenchmarks}
+            setExcludeDelayedBenchmarks={setExcludeDelayedBenchmarks}
+          />
         )}
 
-        {view.screen === "estimator" && isManager && (
-          <div style={{ display: "grid", gap: 14 }}>
-            <button style={btn} onClick={goJobs}>
-              ← Back to Jobs
-            </button>
-
-            <div style={card}>
-              <div style={{ fontWeight: 900, fontSize: 18, marginBottom: 10 }}>
-                Estimate New Job
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr",
-                  gap: 10,
-                  marginBottom: 12,
-                }}
-              >
-                <input
-                  style={input}
-                  placeholder="Patio Sqft"
-                  inputMode="decimal"
-                  value={estimateInputs.patio_sqft}
-                  onChange={(e) =>
-                    setEstimateInputs((s) => ({
-                      ...s,
-                      patio_sqft: e.target.value,
-                    }))
-                  }
-                />
-
-                <input
-                  style={input}
-                  placeholder="Wall Sqft"
-                  inputMode="decimal"
-                  value={estimateInputs.wall_sqft}
-                  onChange={(e) =>
-                    setEstimateInputs((s) => ({
-                      ...s,
-                      wall_sqft: e.target.value,
-                    }))
-                  }
-                />
-
-                <input
-                  style={input}
-                  placeholder="Cap LF"
-                  inputMode="decimal"
-                  value={estimateInputs.cap_lf}
-                  onChange={(e) =>
-                    setEstimateInputs((s) => ({
-                      ...s,
-                      cap_lf: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                  flexWrap: "wrap",
-                }}
-              >
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    fontWeight: 600,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={excludeDelayedEstimate}
-                    onChange={(e) =>
-                      setExcludeDelayedEstimate(e.target.checked)
-                    }
-                  />
-                  Exclude delayed jobs
-                </label>
-
-                <button
-                  style={btnPrimary}
-                  onClick={calculateEstimate}
-                  disabled={estimateLoading}
-                >
-                  {estimateLoading ? "Loading..." : "Calculate Estimate"}
-                </button>
-              </div>
-            </div>
-
-            {estimateResult && (
-              <>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                    gap: 12,
-                  }}
-                >
-                  <div style={card}>
-                    <div style={{ color: "#6b7280", fontSize: 13 }}>
-                      Low Estimate
-                    </div>
-                    <div style={{ fontWeight: 900, fontSize: 24 }}>
-                      {estimateResult.low_hours.toFixed(2)} hrs
-                    </div>
-                  </div>
-
-                  <div style={card}>
-                    <div style={{ color: "#6b7280", fontSize: 13 }}>
-                      Likely Estimate
-                    </div>
-                    <div style={{ fontWeight: 900, fontSize: 24 }}>
-                      {estimateResult.likely_hours.toFixed(2)} hrs
-                    </div>
-                  </div>
-
-                  <div style={card}>
-                    <div style={{ color: "#6b7280", fontSize: 13 }}>
-                      High Estimate
-                    </div>
-                    <div style={{ fontWeight: 900, fontSize: 24 }}>
-                      {estimateResult.high_hours.toFixed(2)} hrs
-                    </div>
-                  </div>
-                </div>
-
-                <div style={card}>
-                  <div style={{ fontWeight: 900, marginBottom: 10 }}>
-                    Similar Jobs Used ({estimateResult.match_count})
-                  </div>
-
-                  <div style={{ display: "grid", gap: 8 }}>
-                    {estimateResult.matches.map((job) => (
-                      <div
-                        key={job.job_id}
-                        style={{
-                          padding: 10,
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 12,
-                          background: "white",
-                          display: "grid",
-                          gridTemplateColumns: "1fr auto",
-                          gap: 10,
-                          alignItems: "center",
-                        }}
-                      >
-                        <div>
-                          <div style={{ fontWeight: 800 }}>{job.name}</div>
-                          <div style={{ color: "#6b7280", fontSize: 13 }}>
-                            Patio: {Number(job.patio_sqft || 0)} sqft • Wall:{" "}
-                            {Number(job.wall_sqft || 0)} sqft • Cap:{" "}
-                            {Number(job.cap_lf || 0)} lf
-                          </div>
-                          <div style={{ color: "#6b7280", fontSize: 13 }}>
-                            {job.has_delay ? "Delayed job" : "Clean job"} •
-                            Similarity {job.similarity.toFixed(3)}
-                          </div>
-                        </div>
-
-                        <div style={{ textAlign: "right" }}>
-                          <div style={{ fontWeight: 900 }}>
-                            {Number(job.total_hours || 0).toFixed(2)} hrs
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+{view.screen === "estimator" && isManager && (
+          <EstimatorScreen
+            card={card}
+            btn={btn}
+            btnPrimary={btnPrimary}
+            input={input}
+            goJobs={goJobs}
+            estimateInputs={estimateInputs}
+            setEstimateInputs={setEstimateInputs}
+            excludeDelayedEstimate={excludeDelayedEstimate}
+            setExcludeDelayedEstimate={setExcludeDelayedEstimate}
+            estimateLoading={estimateLoading}
+            estimateResult={estimateResult}
+            calculateEstimate={calculateEstimate}
+          />
         )}
 
-        {view.screen === "dashboard" && isManager && (
-          <div style={{ display: "grid", gap: 14 }}>
-            <button style={btn} onClick={goJobs}>
-              ← Back to Jobs
-            </button>
-
-            <div style={card}>
-              <div style={{ fontWeight: 900, marginBottom: 10 }}>
-                Job Progress
-              </div>
-
-              {jobProgressRows.length === 0 ? (
-                <div style={{ color: "#6b7280" }}>
-                  No jobs in progress yet.
-                </div>
-              ) : (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {jobProgressRows.map((j) => {
-                    const activityBreakdown = jobActivityRows.filter(
-                      (a) => a.job_id === j.job_id
-                    );
-
-                    return (
-                      <div
-                        key={j.job_id}
-                        style={{
-                          padding: 12,
-                          borderRadius: 14,
-                          border: "1px solid #e5e7eb",
-                          background: "white",
-                          display: "grid",
-                          gap: 10,
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr auto",
-                            gap: 10,
-                            alignItems: "center",
-                          }}
-                        >
-                          <div>
-                            <div
-                              style={{ fontWeight: 900, color: "#111827" }}
-                            >
-                              {j.name}
-                            </div>
-                            <div style={{ color: "#6b7280", fontSize: 13 }}>
-                              Patio: {Number(j.patio_sqft || 0)} sqft • Wall:{" "}
-                              {Number(j.wall_sqft || 0)} sqft • Cap:{" "}
-                              {Number(j.cap_lf || 0)} lf
-                            </div>
-                          </div>
-
-                          <div style={{ textAlign: "right" }}>
-                            <div
-                              style={{ fontWeight: 900, color: "#111827" }}
-                            >
-                              {Number(j.total_hours || 0).toFixed(2)} hrs
-                            </div>
-                            <div style={{ color: "#6b7280", fontSize: 13 }}>
-                              {Number(j.min_per_sqft || 0).toFixed(2)} min/sqft
-                            </div>
-                          </div>
-                        </div>
-
-                        {activityBreakdown.length > 0 && (
-                          <div style={{ display: "grid", gap: 4 }}>
-                            <div
-                              style={{
-                                fontWeight: 800,
-                                color: "#111827",
-                                fontSize: 13,
-                              }}
-                            >
-                              Breakdown
-                            </div>
-
-                            {activityBreakdown.map((a) => (
-                              <div
-                                key={`${a.job_id}-${a.activity}`}
-                                style={{
-                                  display: "grid",
-                                  gridTemplateColumns: "1fr auto",
-                                  gap: 10,
-                                  fontSize: 13,
-                                }}
-                              >
-                                <div style={{ color: "#6b7280" }}>
-                                  {a.activity}
-                                </div>
-                                <div
-                                  style={{
-                                    color: "#111827",
-                                    fontWeight: 700,
-                                  }}
-                                >
-                                  {Number(a.total_hours || 0).toFixed(2)} hrs
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div style={card}>
-              <div style={{ fontWeight: 900 }}>Supervisor Dashboard</div>
-
-              <div style={{ height: 10 }} />
-
-              {dashboardRows.length === 0 ? (
-                <div style={{ color: "#6b7280" }}>
-                  No one is currently running a timer.
-                </div>
-              ) : (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {dashboardRows.map((r) => {
-                    const startedMs = new Date(r.started_at).getTime();
-                    const elapsedMs = tick - startedMs;
-
-                    return (
-                      <div
-                        key={`${r.worker_id}-${r.job_id}-${r.started_at}`}
-                        style={{
-                          padding: 12,
-                          borderRadius: 14,
-                          border: "1px solid #e5e7eb",
-                          background: "white",
-                          display: "grid",
-                          gridTemplateColumns: "1fr auto",
-                          gap: 10,
-                          alignItems: "center",
-                        }}
-                      >
-                        <div>
-                          <div style={{ fontWeight: 900, color: "#111827" }}>
-                            {r.display_name || "Worker"} —{" "}
-                            {r.job_name || "Job"}
-                          </div>
-                          <div style={{ color: "#6b7280", fontSize: 13 }}>
-                            {r.activity}
-                          </div>
-                        </div>
-
-                        <div
-                          style={{
-                            display: "grid",
-                            gap: 8,
-                            justifyItems: "end",
-                          }}
-                        >
-                          <div style={{ fontWeight: 900, color: "#111827" }}>
-                            {fmtClock(elapsedMs)}
-                          </div>
-
-                          <button
-                            style={btn}
-                            onClick={() => supervisorStopTimer(r)}
-                          >
-                            Stop Timer
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+{view.screen === "dashboard" && isManager && (
+          <DashboardScreen
+            card={card}
+            btn={btn}
+            goJobs={goJobs}
+            dashboardRows={dashboardRows}
+            jobProgressRows={jobProgressRows}
+            jobActivityRows={jobActivityRows}
+            tick={tick}
+            supervisorStopTimer={supervisorStopTimer}
+          />
         )}
 
-        {view.screen === "completed" && isManager && (
-          <div style={{ display: "grid", gap: 14 }}>
-            <button style={btn} onClick={goJobs}>
-              ← Back to Jobs
-            </button>
-
-            <div style={card}>
-              <div style={{ fontWeight: 900, marginBottom: 10 }}>
-                Completed Jobs
-              </div>
-
-              {completedJobs.length === 0 ? (
-                <div style={{ color: "#6b7280" }}>No completed jobs yet.</div>
-              ) : (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {completedJobs.map((j) => {
-                    const totalM = Number(j.total_minutes) || 0;
-                    const totalH = totalM / 60;
-                    const mpsf = j.sqft > 0 ? totalM / j.sqft : 0;
-
-                    return (
-                      <div
-                        key={j.job_id || j.id}
-                        onClick={() => openCompletedJobReport(j)}
-                        style={{
-                          padding: 12,
-                          borderRadius: 14,
-                          border: "1px solid #e5e7eb",
-                          background: "white",
-                          display: "grid",
-                          gridTemplateColumns: "1fr auto",
-                          gap: 10,
-                          alignItems: "center",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <div>
-                          <div style={{ fontWeight: 900, color: "#111827" }}>
-                            {j.name}
-                          </div>
-                          <div style={{ color: "#6b7280", fontSize: 13 }}>
-                            Patio: {Number(j.patio_sqft || 0)} sqft • Wall:{" "}
-                            {Number(j.wall_sqft || 0)} sqft • Cap:{" "}
-                            {Number(j.cap_lf || 0)} lf
-                          </div>
-                          <div style={{ color: "#6b7280", fontSize: 13 }}>
-                            {totalH.toFixed(2)} hrs • {mpsf.toFixed(2)} min/sqft
-                          </div>
-                          <div style={{ color: "#6b7280", fontSize: 12 }}>
-                            Completed {new Date(j.completed_at).toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+{view.screen === "completed" && isManager && (
+          <CompletedJobsScreen
+            card={card}
+            btn={btn}
+            goJobs={goJobs}
+            completedJobs={completedJobs}
+            openCompletedJobReport={openCompletedJobReport}
+          />
         )}
 
-        {view.screen === "completedReport" &&
+{view.screen === "completedReport" &&
           completedJobReport &&
           isManager && (
-            <div style={{ display: "grid", gap: 14 }}>
-              <button style={btn} onClick={openCompletedJobs}>
-                ← Back to Completed Jobs
-              </button>
-
-              <div style={card}>
-                <div style={{ fontWeight: 900, fontSize: 20, marginBottom: 8 }}>
-                  {completedJobReport.name}
-                </div>
-
-                <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
-                  <div>
-                    <strong>Patio Sqft:</strong>{" "}
-                    {Number(completedJobReport.patio_sqft || 0)}
-                  </div>
-                  <div>
-                    <strong>Wall Sqft:</strong>{" "}
-                    {Number(completedJobReport.wall_sqft || 0)}
-                  </div>
-                  <div>
-                    <strong>Cap LF:</strong>{" "}
-                    {Number(completedJobReport.cap_lf || 0)}
-                  </div>
-                  <div>
-                    <strong>Completed:</strong>{" "}
-                    {completedJobReport.completed_at
-                      ? new Date(
-                          completedJobReport.completed_at
-                        ).toLocaleString()
-                      : "—"}
-                  </div>
-                  <div>
-                    <strong>Total Labor:</strong>{" "}
-                    {Number(completedJobReport.total_hours || 0).toFixed(2)} hrs
-                  </div>
-                  <div>
-                    <strong>Install Rate:</strong>{" "}
-                    {Number(completedJobReport.min_per_sqft || 0).toFixed(2)}{" "}
-                    min/sqft
-                  </div>
-                </div>
-              </div>
-
-              <div style={card}>
-                <div style={{ fontWeight: 900, marginBottom: 10 }}>
-                  Activity Breakdown
-                </div>
-
-                {completedJobActivities.length === 0 ? (
-                  <div style={{ color: "#6b7280" }}>
-                    No activity breakdown found.
-                  </div>
-                ) : (
-                  <div style={{ display: "grid", gap: 8 }}>
-                    {completedJobActivities.map((a) => (
-                      <div
-                        key={`${a.job_id}-${a.activity}`}
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr auto auto",
-                          gap: 10,
-                          padding: 10,
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 12,
-                          background: "white",
-                          alignItems: "center",
-                        }}
-                      >
-                        <div style={{ color: "#6b7280" }}>{a.activity}</div>
-
-                        <div style={{ fontWeight: 800 }}>
-                          {Number(a.total_hours || 0).toFixed(2)} hrs
-                        </div>
-
-                        <div
-                          style={{
-                            color: "#6b7280",
-                            fontSize: 13,
-                            textAlign: "right",
-                          }}
-                        >
-                          {a.unit_rate == null
-                            ? "—"
-                            : `${Number(a.unit_rate).toFixed(2)} ${
-                                a.unit_rate_label || ""
-                              }`}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div style={card}>
-                <div style={{ fontWeight: 900, marginBottom: 10 }}>
-                  Job Notes / Delay Context
-                </div>
-
-                {completedJobNotes.length === 0 ? (
-                  <div style={{ color: "#6b7280" }}>
-                    No notes found for this job.
-                  </div>
-                ) : (
-                  <div style={{ display: "grid", gap: 8 }}>
-                    {completedJobNotes.map((note) => (
-                      <div
-                        key={note.id}
-                        style={{
-                          padding: 10,
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 12,
-                          background: "white",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            gap: 10,
-                            marginBottom: 6,
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          <div style={{ fontWeight: 800 }}>{note.note_type}</div>
-                          <div style={{ color: "#6b7280", fontSize: 12 }}>
-                            {new Date(note.created_at).toLocaleString()}
-                          </div>
-                        </div>
-
-                        <div
-                          style={{ color: "#111827", whiteSpace: "pre-wrap" }}
-                        >
-                          {note.note_text}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <CompletedJobReportScreen
+              card={card}
+              btn={btn}
+              completedJobReport={completedJobReport}
+              completedJobActivities={completedJobActivities}
+              completedJobNotes={completedJobNotes}
+              openCompletedJobs={openCompletedJobs}
+            />
           )}
 
-        {view.screen === "job" && currentJob && (
-          <div style={{ display: "grid", gap: 14 }}>
-            <button style={btn} onClick={goJobs}>
-              ← Back
-            </button>
+{view.screen === "job" && currentJob && (
+          <JobDetailScreen
+            card={card}
+            btn={btn}
+            btnPrimary={btnPrimary}
+            input={input}
+            goJobs={goJobs}
+            currentJob={currentJob}
+            isManager={isManager}
+            activities={state.activities}
+            activeTimer={activeTimer}
+            runningElapsedMs={runningElapsedMs}
+            startTimer={startTimer}
+            stopTimer={stopTimer}
+            manualEntry={manualEntry}
+            setManualEntry={setManualEntry}
+            addManual={addManual}
+            jobNotes={jobNotes}
+            notesLoading={notesLoading}
+            newNoteType={newNoteType}
+            setNewNoteType={setNewNoteType}
+            newNoteText={newNoteText}
+            setNewNoteText={setNewNoteText}
+            addJobNote={addJobNote}
+            addingNote={addingNote}
+            updateJob={updateJob}
+            completeJob={async () => {
+              const { error } = await supabase
+                .from("jobs")
+                .update({ completed_at: new Date().toISOString() })
+                .eq("id", currentJob.id);
 
-            {isManager && (
-              <button
-                style={btn}
-                onClick={async () => {
-                  const { error } = await supabase
-                    .from("jobs")
-                    .update({ completed_at: new Date().toISOString() })
-                    .eq("id", currentJob.id);
+              if (error) {
+                console.error(error);
+                alert(error.message);
+                return;
+              }
 
-                  if (error) {
-                    console.error(error);
-                    alert(error.message);
-                    return;
-                  }
+              setState((s) => ({
+                ...s,
+                jobs: s.jobs.filter((j) => j.id !== currentJob.id),
+              }));
 
-                  setState((s) => ({
-                    ...s,
-                    jobs: s.jobs.filter((j) => j.id !== currentJob.id),
-                  }));
-
-                  alert("Job marked complete.");
-                  goJobs();
-                }}
-              >
-                Complete Job
-              </button>
-            )}
-
-            <div style={card}>
-              <div style={{ fontWeight: 900, fontSize: 18 }}>
-                {currentJob.name}
-              </div>
-
-              <div style={{ height: 10 }} />
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr",
-                  gap: 10,
-                }}
-              >
-                <div>
-                  <div style={{ color: "#6b7280", fontSize: 13 }}>
-                    Patio Sqft
-                  </div>
-                  <input
-                    style={input}
-                    inputMode="decimal"
-                    value={currentJob.patio_sqft || 0}
-                    onChange={(e) =>
-                      updateJob(currentJob.id, {
-                        patio_sqft: Number(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <div style={{ color: "#6b7280", fontSize: 13 }}>
-                    Wall Sqft
-                  </div>
-                  <input
-                    style={input}
-                    inputMode="decimal"
-                    value={currentJob.wall_sqft || 0}
-                    onChange={(e) =>
-                      updateJob(currentJob.id, {
-                        wall_sqft: Number(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <div style={{ color: "#6b7280", fontSize: 13 }}>Cap LF</div>
-                  <input
-                    style={input}
-                    inputMode="decimal"
-                    value={currentJob.cap_lf || 0}
-                    onChange={(e) =>
-                      updateJob(currentJob.id, {
-                        cap_lf: Number(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div style={card}>
-              <div style={{ fontWeight: 900, marginBottom: 10 }}>
-                Start/Stop Timer (by Activity)
-              </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                  gap: 10,
-                }}
-              >
-                {state.activities.map((act) => {
-                  const runningThis =
-                    activeTimer &&
-                    activeTimer.jobId === currentJob.id &&
-                    activeTimer.activity === act;
-
-                  const disabled = !!activeTimer && !runningThis;
-                  
-                  return (
-                    <button
-                      key={act}
-                      style={{
-                        ...btn,
-                        padding: "14px 12px",
-                        borderRadius: 16,
-                        border: runningThis
-                          ? "2px solid #111827"
-                          : "1px solid #d1d5db",
-                        opacity: disabled ? 0.5 : 1,
-                      }}
-                      disabled={disabled}
-                      onClick={() =>
-                        runningThis
-                          ? stopTimer()
-                          : startTimer(currentJob.id, act)
-                      }
-                      title={disabled ? "Stop current timer first" : "Start timer"}
-                    >
-                      <div
-                        style={{
-                          fontWeight: 900,
-                          fontSize: 14,
-                          lineHeight: 1.2,
-                        }}
-                      >
-                        {act}
-                      </div>
-                      {runningThis && (
-                        <div style={{ marginTop: 6, fontWeight: 900 }}>
-                          {fmtClock(runningElapsedMs)} running
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div style={card}>
-              <div style={{ fontWeight: 900, marginBottom: 10 }}>Manual Add</div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "2fr 1fr 120px",
-                  gap: 10,
-                }}
-              >
-                <select
-                  style={input}
-                  value={manualEntry.activity}
-                  onChange={(e) =>
-                    setManualEntry((m) => ({ ...m, activity: e.target.value }))
-                  }
-                >
-                  {state.activities.map((a) => (
-                    <option key={a} value={a}>
-                      {a}
-                    </option>
-                  ))}
-                </select>
-
-                <input
-                  style={input}
-                  placeholder="Minutes"
-                  inputMode="decimal"
-                  value={manualEntry.minutes}
-                  onChange={(e) =>
-                    setManualEntry((m) => ({ ...m, minutes: e.target.value }))
-                  }
-                />
-
-                <button
-                  style={btnPrimary}
-                  onClick={() => addManual(currentJob.id)}
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-
-            <div style={card}>
-              <div style={{ fontWeight: 900, marginBottom: 10 }}>
-                Job Notes / Delay Tracking
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 140px",
-                  gap: 10,
-                  marginBottom: 10,
-                }}
-              >
-                <select
-                  style={input}
-                  value={newNoteType}
-                  onChange={(e) => setNewNoteType(e.target.value)}
-                >
-                  {NOTE_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-
-                <button
-                  style={btnPrimary}
-                  onClick={() => addJobNote(currentJob.id)}
-                  disabled={addingNote || !newNoteText.trim()}
-                >
-                  {addingNote ? "Saving..." : "Add Note"}
-                </button>
-              </div>
-
-              <textarea
-                style={{
-                  ...input,
-                  minHeight: 90,
-                  resize: "vertical",
-                  marginBottom: 12,
-                }}
-                placeholder="Add context about weather, delays, material issues, access problems, rework, etc."
-                value={newNoteText}
-                onChange={(e) => setNewNoteText(e.target.value)}
-              />
-
-              {notesLoading ? (
-                <div style={{ color: "#6b7280" }}>Loading notes...</div>
-              ) : jobNotes.length === 0 ? (
-                <div style={{ color: "#6b7280" }}>No notes yet.</div>
-              ) : (
-                <div style={{ display: "grid", gap: 8 }}>
-                  {jobNotes.map((note) => (
-                    <div
-                      key={note.id}
-                      style={{
-                        padding: 10,
-                        border: "1px solid #e5e7eb",
-                        borderRadius: 12,
-                        background: "white",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: 10,
-                          marginBottom: 6,
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <div style={{ fontWeight: 800 }}>{note.note_type}</div>
-                        <div style={{ color: "#6b7280", fontSize: 12 }}>
-                          {new Date(note.created_at).toLocaleString()}
-                        </div>
-                      </div>
-
-                      <div
-                        style={{ color: "#111827", whiteSpace: "pre-wrap" }}
-                      >
-                        {note.note_text}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div style={card}>
-  <div style={{ fontWeight: 900, marginBottom: 8 }}>
-    Entries
-  </div>
-
-  {(currentJob.entries || []).length === 0 ? (
-    <div style={{ color: "#6b7280" }}>
-      No entries yet.
-    </div>
-  ) : (
-    <div style={{ display: "grid", gap: 6 }}>
-      {(currentJob.entries || [])
-        .slice()
-        .reverse()
-        .map((e) => (
-          <div
-            key={e.id}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: 10,
-              border: "1px solid #e5e7eb",
-              borderRadius: 12,
-              background: "white",
-              alignItems: "center"
+              alert("Job marked complete.");
+              goJobs();
             }}
-          >
-            <div>
-              <div style={{ fontWeight: 800 }}>
-                {e.activity}
-              </div>
-
-              <div>
-                {(Number(e.minutes) || 0).toFixed(2)} min
-              </div>
-            </div>
-
-            {isManager && (
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  style={btn}
-                  onClick={() => startEditEntry(e)}
-                >
-                  Edit
-                </button>
-
-                <button
-                  style={btn}
-                  onClick={() => deleteEntry(e)}
-                >
-                  Delete
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-    </div>
-  )}
-</div>
-
-
-{editingEntry && (
-  <div style={card}>
-    <div style={{ fontWeight: 800, marginBottom: 10 }}>
-      Edit Entry
-    </div>
-
-    <div style={{ display: "grid", gap: 10 }}>
-
-      <select
-        style={input}
-        value={editActivity}
-        onChange={(e) => setEditActivity(e.target.value)}
-      >
-        {state.activities.map((a) => (
-          <option key={a} value={a}>
-            {a}
-          </option>
-        ))}
-      </select>
-
-      <input
-        style={input}
-        value={editMinutes}
-        onChange={(e) => setEditMinutes(e.target.value)}
-        placeholder="Minutes"
-      />
-
-      <div style={{ display: "flex", gap: 10 }}>
-
-        <button
-          style={btnPrimary}
-          onClick={saveEditEntry}
-        >
-          Save
-        </button>
-
-        <button
-          style={btn}
-          onClick={() => setEditingEntry(null)}
-        >
-          Cancel
-        </button>
-
-      </div>
-
-    </div>
-  </div>
-)}
-
-          </div>
+            editingEntry={editingEntry}
+            editMinutes={editMinutes}
+            setEditMinutes={setEditMinutes}
+            editActivity={editActivity}
+            setEditActivity={setEditActivity}
+            startEditEntry={startEditEntry}
+            saveEditEntry={saveEditEntry}
+            setEditingEntry={setEditingEntry}
+            deleteEntry={deleteEntry}
+          />
         )}
       </div>
     </div>
