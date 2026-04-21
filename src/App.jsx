@@ -2428,14 +2428,7 @@ async function deleteLawnVisit(visit) {
     return (
       <div style={{ background: "#f8fafc", minHeight: "100vh" }}>
         <div style={page}>
-          <header
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 10,
-            }}
-          >
+          <header className="header">
             <div>
               <div style={{ fontSize: 20, fontWeight: 800 }}>
                 {selectedDivision} Time Tracker
@@ -2447,14 +2440,7 @@ async function deleteLawnVisit(visit) {
               </div>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                flexWrap: "wrap",
-                justifyContent: "flex-end",
-              }}
-            >
+            <div className="header-nav">
               {isManager && selectedDivision === DIVISIONS.PAVERS && (
   <button style={btn} onClick={openDashboard}>
     Dashboard

@@ -41,14 +41,7 @@ export default function LawnAccountsScreen({
       <div style={card}>
         <div style={{ fontWeight: 800, marginBottom: 10 }}>New Account</div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 10,
-            marginBottom: 10,
-          }}
-        >
+        <div className="form-row-2" style={{ marginBottom: 10 }}>
           <input
             style={input}
             placeholder="Account / Property Name"
@@ -67,14 +60,7 @@ export default function LawnAccountsScreen({
           />
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr 1fr",
-            gap: 10,
-            marginBottom: 10,
-          }}
-        >
+        <div className="form-row-4" style={{ marginBottom: 10 }}>
           <input
             style={input}
             placeholder="Cut Price ($)"
@@ -85,14 +71,14 @@ export default function LawnAccountsScreen({
             }
           />
           <input
-  style={input}
-  placeholder="Spray $/min (default 2)"
-  inputMode="decimal"
-  value={newAccount.spray_rate_per_min}
-  onChange={(e) =>
-    setNewAccount((s) => ({ ...s, spray_rate_per_min: e.target.value }))
-  }
-/>
+            style={input}
+            placeholder="Spray $/min (default 2)"
+            inputMode="decimal"
+            value={newAccount.spray_rate_per_min}
+            onChange={(e) =>
+              setNewAccount((s) => ({ ...s, spray_rate_per_min: e.target.value }))
+            }
+          />
           <select
             style={input}
             value={newAccount.frequency}
@@ -115,13 +101,7 @@ export default function LawnAccountsScreen({
           />
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 130px",
-            gap: 10,
-          }}
-        >
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10 }}>
           <input
             style={input}
             placeholder="Notes (optional)"
@@ -162,15 +142,12 @@ export default function LawnAccountsScreen({
             {accounts.map((a) => (
               <div
                 key={a.id}
+                className="item-row"
                 style={{
                   padding: 12,
                   borderRadius: 14,
                   border: "1px solid #e5e7eb",
                   background: "white",
-                  display: "grid",
-                  gridTemplateColumns: "1fr auto",
-                  gap: 10,
-                  alignItems: "center",
                 }}
               >
                 <div>
@@ -180,7 +157,7 @@ export default function LawnAccountsScreen({
                   </div>
                   <div style={{ color: "#6b7280", fontSize: 13 }}>
                     ${Number(a.cut_price || 0).toFixed(2)}/cut
-                 {` • $${Number(a.spray_rate_per_min || 2).toFixed(2)}/min spray`}
+                    {` • $${Number(a.spray_rate_per_min || 2).toFixed(2)}/min spray`}
                     {" • "}
                     {a.frequency}
                     {Number(a.sqft || 0) > 0 && ` • ${a.sqft} sqft`}

@@ -137,10 +137,11 @@ export default function LawnAccountDetailScreen({
             alignItems: "center",
             gap: 10,
             marginBottom: 10,
+            flexWrap: "wrap",
           }}
         >
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div style={{ fontWeight: 900, fontSize: 18 }}>{account.name}</div>
               {totalVisits > 0 && (
                 <div
@@ -197,13 +198,7 @@ export default function LawnAccountDetailScreen({
           </div>
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 10,
-              }}
-            >
+            <div className="form-row-2">
               <input
                 style={input}
                 placeholder="Account Name"
@@ -222,13 +217,7 @@ export default function LawnAccountDetailScreen({
               />
             </div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr 1fr",
-                gap: 10,
-              }}
-            >
+            <div className="form-row-4">
               <input
                 style={input}
                 placeholder="Cut Price ($)"
@@ -294,13 +283,7 @@ export default function LawnAccountDetailScreen({
       </div>
 
       {isManager && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-            gap: 12,
-          }}
-        >
+        <div className="stats-grid-4">
           <div style={card}>
             <div style={{ color: "#6b7280", fontSize: 13 }}>Total Visits</div>
             <div style={{ fontWeight: 900, fontSize: 24 }}>{totalVisits}</div>
@@ -331,13 +314,7 @@ export default function LawnAccountDetailScreen({
           Start/Stop Timer
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-            gap: 10,
-          }}
-        >
+        <div className="timer-grid">
           {SERVICES.map((svc) => {
             const runningThis =
               timerRunningHere && activeTimer.serviceType === svc;
@@ -346,10 +323,8 @@ export default function LawnAccountDetailScreen({
             return (
               <button
                 key={svc}
+                className="timer-btn"
                 style={{
-                  ...btn,
-                  padding: "14px 12px",
-                  borderRadius: 16,
                   border: runningThis
                     ? "2px solid #111827"
                     : "1px solid #d1d5db",
@@ -366,14 +341,14 @@ export default function LawnAccountDetailScreen({
                 <div
                   style={{
                     fontWeight: 900,
-                    fontSize: 14,
+                    fontSize: 16,
                     lineHeight: 1.2,
                   }}
                 >
                   {svc}
                 </div>
                 {runningThis && (
-                  <div style={{ marginTop: 6, fontWeight: 900 }}>
+                  <div style={{ marginTop: 6, fontWeight: 900, fontSize: 18 }}>
                     {fmtClock(runningElapsedMs)} running
                   </div>
                 )}
@@ -402,13 +377,7 @@ export default function LawnAccountDetailScreen({
         </div>
 
         {showManual && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 2fr 130px",
-              gap: 10,
-            }}
-          >
+          <div className="form-row-manual-lawn">
             <select
               style={input}
               value={manualService}
@@ -457,15 +426,12 @@ export default function LawnAccountDetailScreen({
               return (
                 <div
                   key={v.id}
+                  className="item-row"
                   style={{
                     padding: 10,
                     border: "1px solid #e5e7eb",
                     borderRadius: 12,
                     background: "white",
-                    display: "grid",
-                    gridTemplateColumns: isManager ? "1fr auto" : "1fr",
-                    gap: 10,
-                    alignItems: "center",
                   }}
                 >
                   <div>
