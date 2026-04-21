@@ -12,6 +12,7 @@ import JobDetailScreen from "./components/JobDetailScreen";
 import LawnAccountsScreen from "./components/LawnAccountsScreen";
 import LawnAccountDetailScreen from "./components/LawnAccountDetailScreen";
 import LawnBillingScreen from "./components/LawnBillingScreen";
+import LawnDashboardScreen from "./components/LawnDashboardScreen";
 
 const STORAGE_KEY = "paver_time_tracker_v1";
 
@@ -157,6 +158,13 @@ const [billingData, setBillingData] = useState([]);
       wall_sqft: "",
       cap_lf: "",
     });
+
+    const [lawnDashboardData, setLawnDashboardData] = useState({
+  activeTimers: [],
+  monthlyStats: { totalRevenue: 0, billedRevenue: 0, unbilledRevenue: 0, visitCount: 0 },
+  accountProfitability: [],
+  recentVisits: [],
+});
 
 
     const [manualEntry, setManualEntry] = useState({
@@ -793,6 +801,213 @@ async function deleteLawnVisit(visit) {
         Array.from(grouped.values()).sort((a, b) => a.name.localeCompare(b.name))
       );
     }
+
+    async function openLawnDashboard() {
+  if (!crewId) return alert("Crew not loaded yet.");
+
+  setView({ screen: "lawnDashboard", jobId: null });
+
+  // Active lawn timers
+  const { data: timers, error: tErr } = await supabase
+    .from("lawn_active_timers")
+    .select("*")
+    .eq("crew_id", crewId);
+
+  if (tErr) console.error("lawn timer load error", tErr);
+
+  const timerAccountIds = (timers ?? []).map((t) => t.account_id);
+  const timerWorkerIds = (timers ?? []).map((t) => t.worker_id);
+
+  // Get account names for timers
+  let timerAccounts = [];
+  if (timerAccountIds.length > 0) {
+    const { data } = await supabase
+      .from("accounts")
+      .select("id, name")
+      .in("id", timerAccountIds);
+    timerAccounts = data ?? [];
+  }
+
+  // Get worker names for timers
+  let timerWorkers = [];
+  if (timerWorkerIds.length > 0) {
+    const { data } = await supabase
+      .from("crew_members")
+      .select("user_id, display_name")
+      .in("user_id", timerWorkerIds);
+    timerWorkers = data ?? [];
+  }
+
+  const acctNameMap = new Map((timerAccounts).map((a) => [a.id, a.name]));
+  const workerNameMap = new Map((timerWorkers).map((w) => [w.user_id, w.display_name]));
+
+  const activeTimers = (timers ?? []).map((t) => ({
+    ...t,
+    account_name: acctNameMap.get(t.account_id) || "Unknown",
+    display_name: workerNameMap.get(t.worker_id) || "Worker",
+  }));
+
+  // Monthly stats
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+  const { data: monthVisits, error: mErr } = await supabase
+    .from("visits")
+    .select("*")
+    .eq("crew_id", crewId)
+    .gte("visit_date", monthStart)
+    .lte("visit_date", monthEnd);
+
+  if (mErr) console.error("monthly visits load error", mErr);
+
+  // Get all accounts for revenue calc
+  const { data: allAccounts, error: aErr } = await supabase
+    .from("accounts")
+    .select("*")
+    .eq("crew_id", crewId);
+
+  if (aErr) console.error("accounts load error", aErr);
+
+  const accountMap = new Map((allAccounts ?? []).map((a) => [a.id, a]));
+
+  // Monthly revenue calculation (group mowing by date per account)
+  const mowingSeen = new Set();
+  let totalRevenue = 0;
+  let billedRevenue = 0;
+  let unbilledRevenue = 0;
+
+  for (const v of monthVisits ?? []) {
+    const acct = accountMap.get(v.account_id);
+    if (!acct) continue;
+
+    let charge = 0;
+    if (v.service_type === "Mowing") {
+      const key = `${v.account_id}-${v.visit_date}`;
+      if (!mowingSeen.has(key)) {
+        mowingSeen.add(key);
+        charge = Number(acct.cut_price || 0);
+      }
+    } else {
+      charge = Number(v.total_minutes || 0) * Number(acct.spray_rate_per_min || 2);
+    }
+
+    totalRevenue += charge;
+    if (v.billed) {
+      billedRevenue += charge;
+    } else {
+      unbilledRevenue += charge;
+    }
+  }
+
+  // Account profitability — all time
+  const { data: allVisits, error: avErr } = await supabase
+    .from("visits")
+    .select("*")
+    .eq("crew_id", crewId);
+
+  if (avErr) console.error("all visits load error", avErr);
+
+  const profitMap = new Map();
+
+  for (const v of allVisits ?? []) {
+    const acct = accountMap.get(v.account_id);
+    if (!acct) continue;
+
+    if (!profitMap.has(v.account_id)) {
+      profitMap.set(v.account_id, {
+        account_id: v.account_id,
+        name: acct.name,
+        address: acct.address,
+        cut_price: Number(acct.cut_price || 0),
+        spray_rate_per_min: Number(acct.spray_rate_per_min || 2),
+        mowingDates: new Set(),
+        totalMowingMinutes: 0,
+        totalSprayMinutes: 0,
+        sprayCount: 0,
+      });
+    }
+
+    const p = profitMap.get(v.account_id);
+
+    if (v.service_type === "Mowing") {
+      p.mowingDates.add(v.visit_date);
+      p.totalMowingMinutes += Number(v.total_minutes || 0);
+    } else {
+      p.totalSprayMinutes += Number(v.total_minutes || 0);
+      p.sprayCount += 1;
+    }
+  }
+
+  const accountProfitability = Array.from(profitMap.values())
+    .map((p) => {
+      const mowingCuts = p.mowingDates.size;
+      const mowingRevenue = mowingCuts * p.cut_price;
+      const sprayRevenue = p.totalSprayMinutes * p.spray_rate_per_min;
+      const totalRev = mowingRevenue + sprayRevenue;
+      const totalMinutes = p.totalMowingMinutes + p.totalSprayMinutes;
+      const effectiveHourlyRate = totalMinutes > 0 ? (totalRev / totalMinutes) * 60 : 0;
+      const avgMinutes = mowingCuts > 0 ? p.totalMowingMinutes / mowingCuts : 0;
+
+      return {
+        account_id: p.account_id,
+        name: p.name,
+        address: p.address,
+        visitCount: mowingCuts + p.sprayCount,
+        totalRevenue: totalRev,
+        effectiveHourlyRate,
+        avgMinutes,
+      };
+    })
+    .filter((a) => a.visitCount > 0)
+    .sort((a, b) => a.effectiveHourlyRate - b.effectiveHourlyRate);
+
+  // Recent visits (last 7 days)
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const recentStart = localDateString(sevenDaysAgo);
+
+  const { data: recentData, error: rErr } = await supabase
+    .from("visits")
+    .select("*")
+    .eq("crew_id", crewId)
+    .gte("visit_date", recentStart)
+    .order("visit_date", { ascending: false });
+
+  if (rErr) console.error("recent visits load error", rErr);
+
+  // Get worker names for recent visits
+  const recentWorkerIds = [...new Set((recentData ?? []).map((v) => v.worker_id))];
+  let recentWorkers = [];
+  if (recentWorkerIds.length > 0) {
+    const { data } = await supabase
+      .from("crew_members")
+      .select("user_id, display_name")
+      .in("user_id", recentWorkerIds);
+    recentWorkers = data ?? [];
+  }
+
+  const recentWorkerMap = new Map((recentWorkers).map((w) => [w.user_id, w.display_name]));
+
+  const recentVisits = (recentData ?? []).map((v) => ({
+    ...v,
+    account_name: accountMap.get(v.account_id)?.name || "Unknown",
+    worker_name: recentWorkerMap.get(v.worker_id) || null,
+  }));
+
+  setLawnDashboardData({
+    activeTimers,
+    monthlyStats: {
+      totalRevenue,
+      billedRevenue,
+      unbilledRevenue,
+      visitCount: (monthVisits ?? []).length,
+    },
+    accountProfitability,
+    recentVisits,
+  });
+}
 
     async function markBilled(accountId, visitIds) {
       if (!visitIds || visitIds.length === 0) return;
@@ -2266,6 +2481,11 @@ async function deleteLawnVisit(visit) {
                 </button>
               )}
               {isManager && selectedDivision === DIVISIONS.LAWN && (
+  <button style={btn} onClick={openLawnDashboard}>
+    Dashboard
+  </button>
+)}
+              {isManager && selectedDivision === DIVISIONS.LAWN && (
                 <button style={btn} onClick={() => {
                   setView({ screen: "lawnBilling", jobId: null });
                   loadBilling();
@@ -2448,6 +2668,19 @@ async function deleteLawnVisit(visit) {
               onMarkBilled={markBilled}
             />
           )}
+
+          {selectedDivision === DIVISIONS.LAWN && view.screen === "lawnDashboard" && isManager && (
+  <LawnDashboardScreen
+    card={card}
+    btn={btn}
+    goBack={() => setView({ screen: "jobs", jobId: null })}
+    activeTimers={lawnDashboardData.activeTimers}
+    monthlyStats={lawnDashboardData.monthlyStats}
+    accountProfitability={lawnDashboardData.accountProfitability}
+    recentVisits={lawnDashboardData.recentVisits}
+    tick={tick}
+  />
+)}
 
           {selectedDivision === DIVISIONS.PAVERS && view.screen === "jobs" && (
             <PaversJobsScreen
