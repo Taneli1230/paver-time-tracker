@@ -20,6 +20,8 @@ export default function LawnAccountDetailScreen({
   onUpdateAccount,
   onStartTimer,
   onStopTimer,
+  onEditVisit,
+  onDeleteVisit,
   activeTimer,
   runningElapsedMs,
   isManager,
@@ -72,7 +74,7 @@ export default function LawnAccountDetailScreen({
     setEditing(false);
   }
 
-// Group mowing visits by date — multiple workers = one cut
+  // Group mowing visits by date — multiple workers = one cut
   const mowingByDate = new Map();
   const sprayVisits = [];
 
@@ -181,7 +183,7 @@ export default function LawnAccountDetailScreen({
           )}
         </div>
 
-                {!editing ? (
+        {!editing ? (
           <div style={{ color: "#6b7280", fontSize: 13 }}>
             {isManager && (
               <>
@@ -484,8 +486,8 @@ export default function LawnAccountDetailScreen({
                     </div>
                   </div>
 
-               {isManager && (
-                    <div style={{ textAlign: "right" }}>
+                  {isManager && (
+                    <div style={{ textAlign: "right", display: "grid", gap: 4 }}>
                       <div style={{ fontWeight: 900 }}>${charge.toFixed(2)}</div>
                       {v.billed && (
                         <div
@@ -498,6 +500,20 @@ export default function LawnAccountDetailScreen({
                           Billed
                         </div>
                       )}
+                      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                        <button
+                          style={{ ...btn, fontSize: 11, padding: "4px 8px" }}
+                          onClick={() => onEditVisit(v)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          style={{ ...btn, fontSize: 11, padding: "4px 8px" }}
+                          onClick={() => onDeleteVisit(v)}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

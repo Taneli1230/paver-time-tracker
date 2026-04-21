@@ -216,6 +216,31 @@ const [billingData, setBillingData] = useState([]);
     }, [session]);
 
     useEffect(() => {
+  if (!session || !crewId) return;
+
+  (async () => {
+    const { data: timer, error } = await supabase
+      .from("lawn_active_timers")
+      .select("*")
+      .eq("worker_id", session.user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("lawn active timer load error", error);
+      return;
+    }
+
+    if (!timer) return;
+
+    setLawnTimer({
+      accountId: timer.account_id,
+      serviceType: timer.service_type,
+      startedAt: new Date(timer.started_at).getTime(),
+    });
+  })();
+}, [session, crewId]);
+
+    useEffect(() => {
       if (!crewId) return;
       loadCrewMemberMap();
     }, [crewId]);
@@ -534,48 +559,140 @@ const [billingData, setBillingData] = useState([]);
     }
 
     async function startLawnTimer(accountId, serviceType) {
-      if (!session) return alert("Not logged in");
-      if (!crewId) return alert("Crew not loaded yet.");
+  if (!session) return alert("Not logged in");
+  if (!crewId) return alert("Crew not loaded yet.");
 
-      const startedAt = Date.now();
+  const startedISO = new Date().toISOString();
 
-      setLawnTimer({
-        accountId,
-        serviceType,
-        startedAt,
-      });
-    }
+  const { error } = await supabase.from("lawn_active_timers").upsert({
+    worker_id: session.user.id,
+    crew_id: crewId,
+    account_id: accountId,
+    service_type: serviceType,
+    started_at: startedISO,
+  });
 
-    async function stopLawnTimer() {
-      if (!lawnTimer) return;
+  if (error) {
+    console.error("lawn timer start error", error);
+    alert(error.message);
+    return;
+  }
 
-      const endedAt = Date.now();
-      const minutes = (endedAt - lawnTimer.startedAt) / 60000;
+  setLawnTimer({
+    accountId,
+    serviceType,
+    startedAt: new Date(startedISO).getTime(),
+  });
+}
 
-      const { data, error } = await supabase
-        .from("visits")
-        .insert([
-          {
-            account_id: lawnTimer.accountId,
-            crew_id: crewId,
-            worker_id: session.user.id,
-            visit_date: localDateString(),
-            service_type: lawnTimer.serviceType,
-            total_minutes: minutes,
-          },
-        ])
-        .select()
-        .single();
+async function stopLawnTimer() {
+  if (!session) return;
+  if (!lawnTimer) return;
 
-      if (error) {
-        console.error("visit insert error", error);
-        alert(error.message);
-        return;
-      }
+  const endedAt = Date.now();
+  const minutes = (endedAt - lawnTimer.startedAt) / 60000;
 
-      setLawnVisits((prev) => [data, ...prev]);
-      setLawnTimer(null);
-    }
+  const { data, error } = await supabase
+    .from("visits")
+    .insert([
+      {
+        account_id: lawnTimer.accountId,
+        crew_id: crewId,
+        worker_id: session.user.id,
+        visit_date: localDateString(),
+        service_type: lawnTimer.serviceType,
+        total_minutes: minutes,
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("visit insert error", error);
+    alert(error.message);
+    return;
+  }
+
+  const { error: delErr } = await supabase
+    .from("lawn_active_timers")
+    .delete()
+    .eq("worker_id", session.user.id);
+
+  if (delErr) console.error("lawn timer delete error", delErr);
+
+  setLawnVisits((prev) => [data, ...prev]);
+  setLawnTimer(null);
+}
+async function editLawnVisit(visit) {
+  const newMinutes = window.prompt(
+    `Edit minutes for ${visit.service_type} on ${visit.visit_date}`,
+    String(Number(visit.total_minutes || 0).toFixed(0))
+  );
+  if (newMinutes === null) return;
+
+  const mins = Number(newMinutes);
+  if (Number.isNaN(mins) || mins < 0) {
+    alert("Enter a valid number of minutes.");
+    return;
+  }
+
+  const newService = window.prompt(
+    "Edit service type (Mowing or Spray/Weed)",
+    visit.service_type
+  );
+  if (newService === null) return;
+
+  if (newService !== "Mowing" && newService !== "Spray/Weed") {
+    alert("Service type must be Mowing or Spray/Weed.");
+    return;
+  }
+
+  const newDate = window.prompt(
+    "Edit visit date (YYYY-MM-DD)",
+    visit.visit_date
+  );
+  if (newDate === null) return;
+
+  const { error } = await supabase
+    .from("visits")
+    .update({
+      total_minutes: mins,
+      service_type: newService,
+      visit_date: newDate,
+    })
+    .eq("id", visit.id);
+
+  if (error) {
+    console.error("edit visit error", error);
+    alert(error.message);
+    return;
+  }
+
+  setLawnVisits((prev) =>
+    prev.map((v) =>
+      v.id === visit.id
+        ? { ...v, total_minutes: mins, service_type: newService, visit_date: newDate }
+        : v
+    )
+  );
+}
+
+async function deleteLawnVisit(visit) {
+  if (!confirm(`Delete ${visit.service_type} visit on ${visit.visit_date}?`)) return;
+
+  const { error } = await supabase
+    .from("visits")
+    .delete()
+    .eq("id", visit.id);
+
+  if (error) {
+    console.error("delete visit error", error);
+    alert(error.message);
+    return;
+  }
+
+  setLawnVisits((prev) => prev.filter((v) => v.id !== visit.id));
+}
     async function loadBilling() {
       if (!crewId) return alert("Crew not loaded yet.");
 
@@ -2308,6 +2425,8 @@ const [billingData, setBillingData] = useState([]);
               onUpdateAccount={updateLawnAccount}
               onStartTimer={startLawnTimer}
               onStopTimer={stopLawnTimer}
+              onEditVisit={editLawnVisit}
+              onDeleteVisit={deleteLawnVisit}
               activeTimer={lawnTimer}
               runningElapsedMs={lawnTimerElapsedMs}
               isManager={isManager}
