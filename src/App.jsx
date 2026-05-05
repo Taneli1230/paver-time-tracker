@@ -1237,39 +1237,57 @@ async function deleteLawnVisit(visit) {
       setCrewMemberMap(map);
     }
 
-    async function clockIn() {
-      if (!session) return alert("Not logged in");
-      if (!crewId) return alert("Crew not loaded yet.");
-      if (activeShift) return alert("Already clocked in.");
+async function clockIn() {
+  if (!session) return alert("Not logged in");
+  if (!crewId) return alert("Crew not loaded yet.");
 
-      const nowIso = new Date().toISOString();
-      const today = localDateString();
+  // Close any stuck open shifts first
+  const { data: openShifts } = await supabase
+    .from("time_shifts")
+    .select("id")
+    .eq("user_id", session.user.id)
+    .in("status", ["clocked_in", "on_break"]);
 
-      const { data, error } = await supabase
-        .from("time_shifts")
-        .insert([
-          {
-            user_id: session.user.id,
-            crew_id: crewId,
-            work_date: today,
-            clock_in_at: nowIso,
-            status: "clocked_in",
-            total_work_minutes: 0,
-          },
-        ])
-        .select()
-        .single();
+  if (openShifts && openShifts.length > 0) {
+    await supabase
+      .from("time_shifts")
+      .update({
+        status: "clocked_out",
+        clock_out_at: new Date().toISOString(),
+        total_work_minutes: 0,
+      })
+      .eq("user_id", session.user.id)
+      .in("status", ["clocked_in", "on_break"]);
+  }
 
-      if (error) {
-        console.error("clock in error", error);
-        return alert(error.message);
-      }
+  const nowIso = new Date().toISOString();
+  const today = localDateString();
 
-      setActiveShift(data);
-      setActiveBreak(null);
-      setActiveShiftBreakMinutes(0);
-      await loadPayrollStatus();
-    }
+  const { data, error } = await supabase
+    .from("time_shifts")
+    .insert([
+      {
+        user_id: session.user.id,
+        crew_id: crewId,
+        work_date: today,
+        clock_in_at: nowIso,
+        status: "clocked_in",
+        total_work_minutes: 0,
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("clock in error", error);
+    return alert(error.message);
+  }
+
+  setActiveShift(data);
+  setActiveBreak(null);
+  setActiveShiftBreakMinutes(0);
+  await loadPayrollStatus();
+}
     async function clockOut() {
       if (!activeShift) return alert("Not clocked in.");
 
